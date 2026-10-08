@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import MihomoIcon from './components/base/mihomo-icon'
+import AppLogo from './components/base/app-logo'
 import { calcTraffic } from './utils/calc'
 import { showContextMenu, triggerMainWindow } from './utils/ipc'
 import { useAppConfig } from './hooks/use-app-config'
@@ -81,7 +81,7 @@ const FloatingApp: React.FC = () => {
             }
             className={`app-nodrag cursor-pointer floating-thumb ${tunEnabled ? 'bg-secondary' : sysProxyEnabled ? 'bg-primary' : 'bg-default'} hover:opacity-hover h-[calc(100%-4px)] aspect-square`}
           >
-            <MihomoIcon className="floating-icon text-primary-foreground h-full leading-full text-[22px] mx-auto" />
+            <AppLogo className="h-full w-full p-0.75" />
           </div>
         </div>
         <div className="flex-1 min-w-0 overflow-hidden">

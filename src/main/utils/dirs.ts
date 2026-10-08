@@ -77,10 +77,6 @@ export function resourcesFilesDir(): string {
   return path.join(resourcesDir(), 'files')
 }
 
-export function themesDir(): string {
-  return path.join(dataDir(), 'themes')
-}
-
 export function mihomoCoreDir(): string {
   return path.join(resourcesDir(), 'sidecar')
 }

@@ -109,14 +109,6 @@ import {
 } from '../resolve/tray'
 import { registerShortcut } from '../resolve/shortcut'
 import { closeMainWindow, mainWindow, showMainWindow, triggerMainWindow } from '../window'
-import {
-  applyTheme,
-  fetchThemes,
-  importThemes,
-  readTheme,
-  resolveThemes,
-  writeTheme
-} from '../resolve/theme'
 import { subStoreCollections, subStoreSubs } from '../core/subStoreApi'
 import { exportGistAgeSecretKey, generateGistAgeKeyPair, getGistUrl } from '../resolve/gistApi'
 import { startMonitor } from '../resolve/trafficMonitor'
@@ -336,12 +328,6 @@ const asyncHandlers: Record<string, AsyncFn> = {
   subStoreSubs,
   subStoreCollections,
   // Theme
-  resolveThemes,
-  fetchThemes,
-  importThemes,
-  readTheme,
-  writeTheme,
-  applyTheme,
   // Tray
   showTrayIcon,
   closeTrayIcon,

@@ -122,12 +122,6 @@ const validInvokeChannels = [
   'subStoreSubs',
   'subStoreCollections',
   // Theme
-  'resolveThemes',
-  'fetchThemes',
-  'importThemes',
-  'readTheme',
-  'writeTheme',
-  'applyTheme',
   // Tray
   'showTrayIcon',
   'closeTrayIcon',

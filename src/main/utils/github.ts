@@ -15,19 +15,6 @@ import { createLogger } from './logger'
 const execFilePromise = promisify(execFile)
 const log = createLogger('GitHub')
 
-const GITHUB_PROXIES = [
-  'https://gh-proxy.org',
-  'https://ghfast.top',
-  'https://down.clashparty.org',
-  'https://download.mihomo.party'
-]
-
-function buildDownloadUrls(githubUrl: string, proxyPref = ''): string[] {
-  if (proxyPref === 'direct') return [githubUrl]
-  if (proxyPref && proxyPref !== 'auto') return [`${proxyPref}/${githubUrl}`]
-  return [...GITHUB_PROXIES.map((p) => `${p}/${githubUrl}`), githubUrl]
-}
-
 export interface GitHubTag {
   name: string
   zipball_url: string
@@ -126,40 +113,26 @@ export function clearVersionCache(owner: string, repo: string): void {
 }
 
 /**
- * 通过镜像列表下载 GitHub 资源，依次尝试直到成功
- * @param url GitHub 原始地址
+ * 下载 GitHub 资源
+ * @param url GitHub 地址
  * @param responseType 返回类型
- * @param timeout 单个源的超时时间
+ * @param timeout 超时时间
  */
 async function fetchGitHubResource<T extends 'text' | 'arraybuffer'>(
   url: string,
   responseType: T,
   timeout: number
 ): Promise<T extends 'text' ? string : Buffer> {
-  const { githubProxy = '' } = await getAppConfig()
-  const urls = buildDownloadUrls(url, githubProxy)
-  let lastError: unknown
-  for (const candidate of urls) {
-    try {
-      log.debug(`Downloading ${candidate}`)
-      const response = await chromeRequest.get(candidate, { responseType, timeout })
-      // chromeRequest 对任何状态码都 resolve，所以这里必须自己判断。否则镜像返回的
-      // 404/502 错误页会被当成下载成功写进内核文件，而且直接 return、不再尝试后续镜像。
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`)
-      }
-      const data =
-        responseType === 'text' ? String(response.data) : Buffer.from(response.data as Buffer)
-      return data as T extends 'text' ? string : Buffer
-    } catch (error) {
-      log.warn(`Download failed from ${candidate}, trying next`, error)
-      lastError = error
-    }
+  log.debug(`Downloading ${url}`)
+  const response = await chromeRequest.get(url, { responseType, timeout })
+  // chromeRequest 对任何状态码都 resolve，所以这里必须自己判断，
+  // 否则 404/502 错误页会被当成下载成功写进内核文件。
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`Download error: HTTP ${response.status} ${response.statusText} (${url})`)
   }
-  log.error(`Failed to download ${url} from all sources`, lastError)
-  throw lastError instanceof Error
-    ? new Error(`Download error: ${lastError.message}`)
-    : new Error(`Failed to download ${url}`)
+  const data =
+    responseType === 'text' ? String(response.data) : Buffer.from(response.data as Buffer)
+  return data as T extends 'text' ? string : Buffer
 }
 
 type CoreChannel = 'release' | 'alpha'
@@ -192,7 +165,7 @@ async function fetchLatestCoreVersion(channel: CoreChannel): Promise<string> {
       ? `${MIHOMO_RELEASES_URL}/download/Prerelease-Alpha/version.txt`
       : `${MIHOMO_RELEASES_URL}/latest/download/version.txt`
   const version = (await fetchGitHubResource(url, 'text', VERSION_FETCH_TIMEOUT)).trim()
-  // 镜像出错时可能返回一整页 HTML，不能把它当版本号拼进下载地址
+  // 异常时可能返回一整页 HTML，不能把它当版本号拼进下载地址
   if (!/^(v\d+\.\d+\.\d+|alpha-[0-9a-f]+)$/i.test(version)) {
     throw new Error(`Invalid core version response: ${version.slice(0, 64)}`)
   }

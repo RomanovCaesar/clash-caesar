@@ -106,7 +106,7 @@ vi.mock('./app', () => ({
     Promise.resolve({
       core: 'mihomo',
       subscriptionTimeout: 30000,
-      userAgent: 'clash-caesar/v2.0.0 (clash.meta)'
+      userAgent: 'clash.caesar/v2.0.0 (clash.meta)'
     })
 }))
 vi.mock('./controledMihomo', () => ({

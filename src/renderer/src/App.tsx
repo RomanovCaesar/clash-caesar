@@ -7,7 +7,7 @@ import { IoSettings } from 'react-icons/io5'
 import routes, { useDeferredRoutePreload } from '@renderer/routes'
 import UpdaterButton from '@renderer/components/updater/updater-button'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
-import { applyTheme, setNativeTheme, setTitleBarOverlay } from '@renderer/utils/ipc'
+import { setNativeTheme, setTitleBarOverlay } from '@renderer/utils/ipc'
 import { platform } from '@renderer/utils/init'
 import { TitleBarOverlayOptions } from 'electron'
 import { useTrafficLogger } from '@renderer/hooks/use-traffic-logger'
@@ -17,7 +17,7 @@ import { hasPendingPluginFile, subscribePluginFile } from '@renderer/utils/plugi
 import 'driver.js/dist/driver.css'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
-import MihomoIcon from './components/base/mihomo-icon'
+import AppLogo from './components/base/app-logo'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
 
@@ -48,7 +48,6 @@ const App: React.FC = () => {
   const {
     enableTrafficLogger = DEFAULT_ENABLE_TRAFFIC_LOGGER,
     appTheme = 'system',
-    customTheme,
     useWindowFrame = false,
     siderWidth = 250,
     lastSelectedSiderCard = 'proxy',
@@ -135,12 +134,6 @@ const App: React.FC = () => {
   }, [appTheme, systemTheme, setTheme, setTitlebar])
 
   useEffect(() => {
-    applyTheme(customTheme || 'default.css').then(() => {
-      setTitlebar()
-    })
-  }, [customTheme, setTitlebar])
-
-  useEffect(() => {
     window.addEventListener('mouseup', onResizeEnd)
     return (): void => window.removeEventListener('mouseup', onResizeEnd)
   }, [onResizeEnd])
@@ -164,7 +157,7 @@ const App: React.FC = () => {
       {siderWidthValue === narrowWidth ? (
         <div style={{ width: `${narrowWidth}px` }} className="side h-full flex flex-col">
           <div className="app-drag flex shrink-0 justify-center items-center z-40 bg-transparent h-11.25">
-            {platform !== 'darwin' && <MihomoIcon className="h-8 leading-8 text-lg mx-px" />}
+            {platform !== 'darwin' && <AppLogo className="h-8 w-8" />}
           </div>
           <Suspense fallback={<div className="min-h-0 flex-1" />}>
             <SiderCards iconOnly />
@@ -196,7 +189,7 @@ const App: React.FC = () => {
               className={`flex justify-between p-2 ${!useWindowFrame && platform === 'darwin' ? 'ml-15' : ''}`}
             >
               <div className="flex ml-1">
-                <MihomoIcon className="h-8 leading-8 text-lg mx-px" />
+                <AppLogo className="h-8 w-8 mr-1.5" />
                 <h3 className="text-lg font-bold leading-8">Clash Caesar</h3>
               </div>
               <UpdaterButton />

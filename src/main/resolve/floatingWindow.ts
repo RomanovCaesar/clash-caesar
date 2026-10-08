@@ -5,7 +5,6 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import windowStateKeeper from 'electron-window-state'
 import { getAppConfig, patchAppConfig } from '../config'
 import { floatingWindowLogger } from '../utils/logger'
-import { applyTheme } from './theme'
 import { buildContextMenu, showTrayIcon } from './tray'
 
 export let floatingWindow: BrowserWindow | null = null
@@ -53,7 +52,7 @@ async function createFloatingWindow(): Promise<void> {
   try {
     const restoredPosition = restoreFloatingWindowPosition()
     const floatingWindowState = windowStateKeeper({ file: FLOATING_WINDOW_STATE_FILE })
-    const { customTheme = 'default.css', floatingWindowCompatMode = true } = await getAppConfig()
+    const { floatingWindowCompatMode = true } = await getAppConfig()
 
     const safeMode = process.env.FLOATING_SAFE_MODE === 'true'
     const useCompatMode =
@@ -115,7 +114,6 @@ async function createFloatingWindow(): Promise<void> {
     })
 
     floatingWindow.on('ready-to-show', () => {
-      applyTheme(customTheme)
       floatingWindow?.show()
       floatingWindow?.setAlwaysOnTop(true, 'screen-saver')
     })

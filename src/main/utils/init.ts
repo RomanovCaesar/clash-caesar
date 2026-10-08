@@ -50,8 +50,7 @@ import {
   profilesDir,
   resourcesFilesDir,
   rulesDir,
-  subStoreDir,
-  themesDir
+  subStoreDir
 } from './dirs'
 import { initLogger } from './logger'
 import { atomicWriteFile } from './safeFile'
@@ -118,7 +117,6 @@ async function initDirs(): Promise<void> {
 
   const dirsToCreate = [
     dataDir(),
-    themesDir(),
     profilesDir(),
     overrideDir(),
     rulesDir(),
@@ -412,22 +410,24 @@ async function migrateMihomoConfig(): Promise<void> {
   }
 }
 
-// 迁移：移除 Smart 内核支持
+// 迁移：清理已移除功能（Smart 内核、GitHub 下载代理、自定义主题）留下的配置
 const LEGACY_SMART_OVERRIDE_ID = 'smart-core-override'
-const LEGACY_SMART_APP_KEYS = [
+const LEGACY_APP_KEYS = [
   'enableSmartCore',
   'enableSmartOverride',
   'smartCoreUseLightGBM',
   'smartCoreCollectData',
-  'smartCollectorSize'
+  'smartCollectorSize',
+  'githubProxy',
+  'customTheme'
 ]
 const LEGACY_SMART_MIHOMO_KEYS = ['lgbm-auto-update', 'lgbm-update-interval', 'lgbm-url']
 
-async function migrateRemoveSmartCore(): Promise<void> {
+async function migrateRemovedFeatures(): Promise<void> {
   const appConfig = (await getAppConfig()) as IAppConfig & Record<string, unknown>
   const appPatch: Record<string, unknown> = {}
   if ((appConfig.core as string) === 'mihomo-smart') appPatch.core = 'mihomo'
-  for (const key of LEGACY_SMART_APP_KEYS) {
+  for (const key of LEGACY_APP_KEYS) {
     if (key in appConfig) appPatch[key] = undefined
   }
   if (Object.keys(appPatch).length > 0) {
@@ -456,7 +456,7 @@ async function migration(): Promise<void> {
     migrateTraySettings(),
     migrateRemovePassword(),
     migrateMihomoConfig(),
-    migrateRemoveSmartCore()
+    migrateRemovedFeatures()
   ])
 }
 

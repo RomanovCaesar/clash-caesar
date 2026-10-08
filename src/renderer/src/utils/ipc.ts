@@ -152,11 +152,6 @@ interface IpcApi {
   subStoreSubs: () => Promise<ISubStoreSub[]>
   subStoreCollections: () => Promise<ISubStoreSub[]>
   // Theme
-  resolveThemes: () => Promise<{ key: string; label: string; content: string }[]>
-  fetchThemes: () => Promise<void>
-  importThemes: (files: string[]) => Promise<void>
-  readTheme: (theme: string) => Promise<string>
-  writeTheme: (theme: string, css: string) => Promise<void>
   // Tray
   showTrayIcon: () => Promise<void>
   closeTrayIcon: () => Promise<void>
@@ -322,11 +317,6 @@ export const {
   subStoreSubs,
   subStoreCollections,
   // Theme
-  resolveThemes,
-  fetchThemes,
-  importThemes,
-  readTheme,
-  writeTheme,
   // Tray
   showTrayIcon,
   closeTrayIcon,
@@ -368,28 +358,6 @@ export const {
 export const getPlatform = ipc.platform
 
 // 需要特殊处理的函数
-
-// applyTheme: 防抖处理，避免频繁调用
-let applyThemeRunning = false
-let pendingTheme: string | null = null
-
-export async function applyTheme(theme: string): Promise<void> {
-  if (applyThemeRunning) {
-    pendingTheme = theme
-    return
-  }
-  applyThemeRunning = true
-  try {
-    await invoke<void>('applyTheme', theme)
-  } finally {
-    applyThemeRunning = false
-    if (pendingTheme !== null) {
-      const nextTheme = pendingTheme
-      pendingTheme = null
-      await applyTheme(nextTheme)
-    }
-  }
-}
 
 // setTitleBarOverlay: 需要静默处理不支持的平台
 export async function setTitleBarOverlay(overlay: TitleBarOverlayOptions): Promise<void> {

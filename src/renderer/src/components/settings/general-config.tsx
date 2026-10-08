@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { toast } from '@renderer/components/base/toast'
 import {
   Button,
@@ -11,49 +11,36 @@ import {
   Tabs,
   Tooltip
 } from '@heroui/react'
-import { BiCopy, BiSolidFileImport } from 'react-icons/bi'
+import { BiCopy } from 'react-icons/bi'
 import useSWR from 'swr'
 import {
-  applyTheme,
   checkAutoRun,
   closeFloatingWindow,
   closeTrayIcon,
   copyEnv,
   disableAutoRun,
   enableAutoRun,
-  fetchThemes,
   getFilePath,
-  importThemes,
   relaunchApp,
   readImageFileDataURL,
-  resolveThemes,
   showFloatingWindow,
   showTrayIcon,
   startMonitor,
-  updateTrayIcon,
-  writeTheme
+  updateTrayIcon
 } from '@renderer/utils/ipc'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import debounce from '@renderer/utils/debounce'
 import { platform } from '@renderer/utils/init'
 import { useTheme } from 'next-themes'
-import { IoIosArrowDown, IoIosHelpCircle, IoMdCloudDownload } from 'react-icons/io'
-import { MdEditDocument } from 'react-icons/md'
+import { IoIosArrowDown, IoIosHelpCircle } from 'react-icons/io'
 import { useTranslation } from 'react-i18next'
 import SettingItem from '../base/base-setting-item'
 import SettingCard from '../base/base-setting-card'
 import BaseConfirmModal from '../base/base-confirm-modal'
-import CSSEditorModal from './css-editor-modal'
 import TrayIconCropModal from './tray-icon-crop-modal'
 
 const rasterTrayIconPattern = /\.(png|jpe?g|webp)$/i
 const macTrayIconPattern = /\.(ico|icns)$/i
-const GITHUB_PROXY_BUILTINS = [
-  'https://gh-proxy.org',
-  'https://ghfast.top',
-  'https://down.clashparty.org',
-  'https://download.mihomo.party'
-]
 type TrayIconCropTarget = 'custom' | keyof ICustomTrayIcons
 const customTrayIconStateKeys: (keyof ICustomTrayIcons)[] = ['off', 'sysProxy', 'tun']
 
@@ -61,9 +48,6 @@ const GeneralConfig: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { data: enable = false, mutate: mutateEnable } = useSWR('checkAutoRun', checkAutoRun)
   const { appConfig, patchAppConfig } = useAppConfig()
-  const [customThemes, setCustomThemes] = useState<{ key: string; label: string }[]>()
-  const [openCSSEditor, setOpenCSSEditor] = useState(false)
-  const [fetching, setFetching] = useState(false)
   const [isRelaunching, setIsRelaunching] = useState(false)
   const [trayIconCropDataURL, setTrayIconCropDataURL] = useState('')
   const [trayIconCropTarget, setTrayIconCropTarget] = useState<TrayIconCropTarget>('custom')
@@ -94,40 +78,16 @@ const GeneralConfig: React.FC = () => {
     autoQuitWithoutCore = false,
     autoQuitWithoutCoreDelay = 60,
     autoQuitWithoutCoreMode = 'core',
-    customTheme = 'default.css',
     envType = [platform === 'win32' ? 'powershell' : 'bash'],
     autoCheckUpdate = true,
     autoUpdateProfileOnStart = true,
     silentUpdate = true,
-    githubProxy = 'auto',
     appTheme = 'system',
     language = 'zh-CN',
     triggerMainWindowBehavior = 'show',
     hideConnectionCardWave = false,
     disableAppLog = false
   } = appConfig || {}
-
-  const isCustomGithubProxy =
-    githubProxy !== 'auto' &&
-    githubProxy !== 'direct' &&
-    !GITHUB_PROXY_BUILTINS.includes(githubProxy)
-  const [customGithubProxy, setCustomGithubProxy] = useState(isCustomGithubProxy ? githubProxy : '')
-  const patchGithubProxy = debounce(async (v: string) => {
-    await patchAppConfig({ githubProxy: v })
-  }, 500)
-
-  useEffect(() => {
-    if (isCustomGithubProxy && customGithubProxy !== githubProxy) {
-      setCustomGithubProxy(githubProxy)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [githubProxy, isCustomGithubProxy])
-
-  useEffect(() => {
-    resolveThemes().then((themes) => {
-      setCustomThemes(themes)
-    })
-  }, [])
 
   const hasCustomTrayIcons = Boolean(customTrayIcon || Object.values(customTrayIcons).some(Boolean))
 
@@ -201,17 +161,6 @@ const GeneralConfig: React.FC = () => {
 
   return (
     <>
-      {openCSSEditor && (
-        <CSSEditorModal
-          theme={customTheme}
-          onCancel={() => setOpenCSSEditor(false)}
-          onConfirm={async (css: string) => {
-            await writeTheme(customTheme, css)
-            await applyTheme(customTheme)
-            setOpenCSSEditor(false)
-          }}
-        />
-      )}
       {showHardwareAccelConfirm && (
         <BaseConfirmModal
           isOpen={showHardwareAccelConfirm}
@@ -320,41 +269,6 @@ const GeneralConfig: React.FC = () => {
             }}
           />
         </SettingItem>
-        <SettingItem title={t('settings.githubProxy')} divider>
-          <Select
-            classNames={{ trigger: 'data-[hover=true]:bg-default-200' }}
-            className="w-50"
-            size="sm"
-            selectedKeys={[isCustomGithubProxy ? 'custom' : githubProxy]}
-            aria-label={t('settings.githubProxy')}
-            onSelectionChange={(v) => {
-              const key = Array.from(v)[0] as string
-              patchAppConfig({ githubProxy: key === 'custom' ? customGithubProxy : key })
-            }}
-          >
-            <SelectItem key="auto">{t('settings.githubProxy.auto')}</SelectItem>
-            <SelectItem key="direct">{t('settings.githubProxy.direct')}</SelectItem>
-            <SelectItem key="custom">{t('settings.githubProxy.custom')}</SelectItem>
-            <SelectItem key="https://gh-proxy.org">gh-proxy.org</SelectItem>
-            <SelectItem key="https://ghfast.top">ghfast.top</SelectItem>
-            <SelectItem key="https://down.clashparty.org">down.clashparty.org</SelectItem>
-            <SelectItem key="https://download.mihomo.party">download.mihomo.party</SelectItem>
-          </Select>
-        </SettingItem>
-        {isCustomGithubProxy && (
-          <SettingItem title={t('settings.githubProxy.customAddress')} divider>
-            <Input
-              size="sm"
-              className="w-70"
-              value={customGithubProxy}
-              placeholder={t('settings.githubProxy.customPlaceholder')}
-              onValueChange={(v) => {
-                setCustomGithubProxy(v)
-                patchGithubProxy(v)
-              }}
-            />
-          </SettingItem>
-        )}
         <SettingItem title={t('settings.silentStart')} divider>
           <Switch
             size="sm"
@@ -793,84 +707,6 @@ const GeneralConfig: React.FC = () => {
             <Tab key="dark" title={t('settings.backgroundDark')} />
             <Tab key="light" title={t('settings.backgroundLight')} />
           </Tabs>
-        </SettingItem>
-        <SettingItem
-          title={t('settings.theme')}
-          actions={
-            <>
-              <Button
-                size="sm"
-                isLoading={fetching}
-                isIconOnly
-                title={t('settings.fetchTheme')}
-                variant="light"
-                onPress={async () => {
-                  setFetching(true)
-                  try {
-                    await fetchThemes()
-                    setCustomThemes(await resolveThemes())
-                  } catch (e) {
-                    toast.error(String(e))
-                  } finally {
-                    setFetching(false)
-                  }
-                }}
-              >
-                <IoMdCloudDownload className="text-lg" />
-              </Button>
-              <Button
-                size="sm"
-                isIconOnly
-                title={t('settings.importTheme')}
-                variant="light"
-                onPress={async () => {
-                  const files = await getFilePath(['css'])
-                  if (!files) return
-                  try {
-                    await importThemes(files)
-                    setCustomThemes(await resolveThemes())
-                  } catch (e) {
-                    toast.error(String(e))
-                  }
-                }}
-              >
-                <BiSolidFileImport className="text-lg" />
-              </Button>
-              <Button
-                size="sm"
-                isIconOnly
-                title={t('settings.editTheme')}
-                variant="light"
-                onPress={async () => {
-                  setOpenCSSEditor(true)
-                }}
-              >
-                <MdEditDocument className="text-lg" />
-              </Button>
-            </>
-          }
-        >
-          {customThemes && (
-            <Select
-              classNames={{ trigger: 'data-[hover=true]:bg-default-200' }}
-              className="w-[60%]"
-              size="sm"
-              selectedKeys={new Set([customTheme])}
-              aria-label={t('settings.selectTheme')}
-              disallowEmptySelection={true}
-              onSelectionChange={async (v) => {
-                try {
-                  await patchAppConfig({ customTheme: v.currentKey as string })
-                } catch (e) {
-                  toast.error(String(e))
-                }
-              }}
-            >
-              {customThemes.map((theme) => (
-                <SelectItem key={theme.key}>{theme.label}</SelectItem>
-              ))}
-            </Select>
-          )}
         </SettingItem>
       </SettingCard>
     </>

@@ -10,18 +10,11 @@ import i18next from 'i18next'
 import { mainWindow } from '../window'
 import { appLogger } from '../utils/logger'
 import { dataDir, exeDir, exePath, isPortable, resourcesFilesDir } from '../utils/dirs'
-import { getAppConfig, getControledMihomoConfig } from '../config'
+import { getControledMihomoConfig } from '../config'
 import { APP_RELEASE_REPO, DEFAULT_MIHOMO_PORTS } from '../../shared/appConfig'
 import { checkAdminPrivileges } from '../core/manager'
 import { parse } from '../utils/yaml'
 import * as chromeRequest from '../utils/chromeRequest'
-
-const GITHUB_PROXIES = [
-  'https://gh-proxy.org',
-  'https://ghfast.top',
-  'https://down.clashparty.org',
-  'https://download.mihomo.party'
-]
 
 let updateInstallPromise: Promise<void> | undefined
 
@@ -34,31 +27,16 @@ interface GitHubRelease {
   assets?: GitHubReleaseAsset[]
 }
 
-function buildDownloadUrls(githubUrl: string, proxyPref = ''): string[] {
-  if (proxyPref === 'direct') return [githubUrl]
-  if (proxyPref && proxyPref !== 'auto') return [`${proxyPref}/${githubUrl}`]
-  // auto: try each proxy then fall back to direct
-  return [...GITHUB_PROXIES.map((p) => `${p}/${githubUrl}`), githubUrl]
-}
-
-async function tryDownload(
-  urls: string[],
+async function download(
+  url: string,
   options: Parameters<typeof chromeRequest.get>[1]
 ): Promise<Awaited<ReturnType<typeof chromeRequest.get>>> {
-  let lastError: unknown
-  for (const url of urls) {
-    try {
-      const res = await chromeRequest.get(url, options)
-      // 代理源限流/失效时会以 200 以外的状态返回错误页，必须当作失败才能继续尝试下一个源
-      if (res.status < 200 || res.status >= 300) {
-        throw new Error(`Request failed with status ${res.status}: ${url}`)
-      }
-      return res
-    } catch (e) {
-      lastError = e
-    }
+  const res = await chromeRequest.get(url, options)
+  // chromeRequest 对任何状态码都 resolve，错误页不能当作下载成功
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`Request failed with status ${res.status}: ${url}`)
   }
-  throw lastError
+  return res
 }
 
 type UpdaterProxy = { protocol: 'http'; host: string; port: number } | false
@@ -104,10 +82,9 @@ function ensureReleaseRepo(): void {
 
 export async function checkUpdate(): Promise<IAppVersion | undefined> {
   ensureReleaseRepo()
-  const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
-    await Promise.all([getControledMihomoConfig(), getAppConfig()])
+  const { 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed } = await getControledMihomoConfig()
   const githubUrl = `https://github.com/${APP_RELEASE_REPO}/releases/latest/download/latest.yml`
-  const res = await tryDownload(buildDownloadUrls(githubUrl, githubProxy), {
+  const res = await download(githubUrl, {
     headers: { 'Content-Type': 'application/octet-stream' },
     proxy: updaterProxy(mixedPort),
     responseType: 'text'
@@ -155,8 +132,7 @@ export function downloadAndInstallUpdate(version: string): Promise<void> {
 
 async function installUpdate(version: string): Promise<void> {
   ensureReleaseRepo()
-  const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
-    await Promise.all([getControledMihomoConfig(), getAppConfig()])
+  const { 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed } = await getControledMihomoConfig()
   const githubBase = `https://github.com/${APP_RELEASE_REPO}/releases/download/v${version}/`
   const fileMap = {
     'win32-x64': `clash-caesar-windows-${version}-x64-setup.exe`,
@@ -194,15 +170,15 @@ async function installUpdate(version: string): Promise<void> {
           'Failed to get update SHA-256 from GitHub API, falling back to release checksum file',
           e
         )
-        const sha256Res = await tryDownload(
-          buildDownloadUrls(`${githubBase}${file}.sha256`, githubProxy),
-          { proxy, responseType: 'text' }
-        )
+        const sha256Res = await download(`${githubBase}${file}.sha256`, {
+          proxy,
+          responseType: 'text'
+        })
         expectedHash = (sha256Res.data as string).trim().split(/\s+/)[0]
       }
-      // 进度只允许单调递增，避免多代理重试导致进度回退抽搐
+      // 进度只允许单调递增，避免进度回退抽搐
       let lastPercent = -1
-      const res = await tryDownload(buildDownloadUrls(`${githubBase}${file}`, githubProxy), {
+      const res = await download(`${githubBase}${file}`, {
         responseType: 'arraybuffer',
         timeout: 0,
         proxy,
