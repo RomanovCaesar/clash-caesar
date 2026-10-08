@@ -1,6 +1,12 @@
 // 应用自身的发布仓库（owner/repo），用于检查更新和下载安装包。
 // 留空表示尚未建立发布渠道，自动更新处于关闭状态。
-export const APP_RELEASE_REPO = ''
+export const APP_RELEASE_REPO = 'RomanovCaesar/clash-caesar'
+
+export const APP_REPO_URL = `https://github.com/${APP_RELEASE_REPO}`
+
+export const APP_ISSUES_URL = `${APP_REPO_URL}/issues/new`
+
+export const APP_TELEGRAM_URL = 'https://t.me/ClashCaesar'
 
 export const DEFAULT_CONTROL_DNS = false
 

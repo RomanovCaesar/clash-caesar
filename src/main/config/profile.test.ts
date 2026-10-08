@@ -106,7 +106,7 @@ vi.mock('./app', () => ({
     Promise.resolve({
       core: 'mihomo',
       subscriptionTimeout: 30000,
-      userAgent: 'mihomo.party/v2.0.0 (clash.meta)'
+      userAgent: 'clash-caesar/v2.0.0 (clash.meta)'
     })
 }))
 vi.mock('./controledMihomo', () => ({
@@ -135,7 +135,7 @@ const newProfile = `proxies:
 `
 
 beforeEach(async () => {
-  testDir = mkdtempSync(join(tmpdir(), 'mihomo-party-profile-test-'))
+  testDir = mkdtempSync(join(tmpdir(), 'clash-caesar-profile-test-'))
   mkdirSync(join(testDir, 'profiles'), { recursive: true })
   writeFileSync(
     join(testDir, 'profile.yaml'),

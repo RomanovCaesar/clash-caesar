@@ -9,7 +9,7 @@ import { enroll, challenge, config, revoke } from './gateway.mjs'
 
 const CLASH = 'proxies:\n  - {name: a, type: ss}\n'
 const REDIRECT = 'http://127.0.0.1:51000/callback'
-const CLIENT = 'mihomo-party'
+const CLIENT = 'clash-caesar'
 
 function mockRes() {
   const r = { status: 0, headers: {}, body: '' }

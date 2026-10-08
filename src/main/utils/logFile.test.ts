@@ -10,7 +10,7 @@ describe('log file output', () => {
 
   beforeEach(async () => {
     setCoreLogDisabled(false)
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'mihomo-party-log-'))
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'clash-caesar-log-'))
   })
 
   afterEach(async () => {

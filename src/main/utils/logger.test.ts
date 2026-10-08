@@ -18,7 +18,7 @@ describe('application log switch', () => {
   beforeEach(async () => {
     setAppLogDisabled(false)
     setCoreLogDisabled(false)
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'mihomo-party-log-'))
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'clash-caesar-log-'))
     paths.appLogPath = path.join(tempDir, 'app.log')
   })
 

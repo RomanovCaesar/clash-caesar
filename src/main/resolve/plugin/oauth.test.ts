@@ -39,7 +39,7 @@ describe('browserLogin', () => {
     const au = new URL(authorizeUrl)
     expect(au.origin + au.pathname).toBe('https://panel.xx.com/oauth/authorize')
     expect(au.searchParams.get('response_type')).toBe('code')
-    expect(au.searchParams.get('client_id')).toBe('mihomo-party')
+    expect(au.searchParams.get('client_id')).toBe('clash-caesar')
     expect(au.searchParams.get('code_challenge_method')).toBe('S256')
     expect(au.searchParams.get('scope')).toBe('subscribe')
     const redirect = au.searchParams.get('redirect_uri') as string

@@ -37,7 +37,7 @@ describe('gateway.enroll', () => {
         code: 'C',
         code_verifier: 'V',
         redirect_uri: 'http://127.0.0.1:5/callback',
-        client_id: 'mihomo-party',
+        client_id: 'clash-caesar',
         devicePubKey: 'PUB',
         deviceId: 'DID'
       },

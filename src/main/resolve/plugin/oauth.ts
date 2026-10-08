@@ -2,7 +2,7 @@ import http from 'http'
 import { randomBytes, createHash } from 'crypto'
 import { shell } from 'electron'
 
-export const CLIENT_ID = 'mihomo-party'
+export const CLIENT_ID = 'clash-caesar'
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 
 export interface PkcePair {

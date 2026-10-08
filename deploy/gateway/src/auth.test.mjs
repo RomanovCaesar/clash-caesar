@@ -8,7 +8,7 @@ import { authorizeGet, authorizePost } from './auth.mjs'
 
 const PARAMS = {
   response_type: 'code',
-  client_id: 'mihomo-party',
+  client_id: 'clash-caesar',
   redirect_uri: 'http://127.0.0.1:51000/callback',
   code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
   code_challenge_method: 'S256',
@@ -73,7 +73,7 @@ test('authorizePost with valid creds issues a bound code and redirects with stat
   assert.deepEqual(bound, {
     username: 'alice',
     redirect_uri: PARAMS.redirect_uri,
-    client_id: 'mihomo-party',
+    client_id: 'clash-caesar',
     code_challenge: PARAMS.code_challenge
   })
 })

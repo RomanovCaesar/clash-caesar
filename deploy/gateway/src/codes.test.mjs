@@ -5,7 +5,7 @@ import { createCodeStore } from './codes.mjs'
 const payload = {
   username: 'alice',
   redirect_uri: 'http://127.0.0.1:5000/callback',
-  client_id: 'mihomo-party',
+  client_id: 'clash-caesar',
   code_challenge: 'abc'
 }
 

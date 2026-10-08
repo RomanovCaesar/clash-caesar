@@ -99,7 +99,7 @@ vi.mock('./discovery', () => ({
 const browserLogin = vi.fn()
 vi.mock('./oauth', () => ({
   browserLogin: (...a: unknown[]) => browserLogin(...a),
-  CLIENT_ID: 'mihomo-party'
+  CLIENT_ID: 'clash-caesar'
 }))
 const enroll = vi.fn()
 const fetchConfig = vi.fn()
@@ -219,7 +219,7 @@ describe('loginPlugin', () => {
     expect(vault.gateway.lastGood).toBe('https://gw.front.com')
     expect(enroll).toHaveBeenCalledWith(
       expect.objectContaining({ gateway: 'https://gw.front.com' }),
-      expect.objectContaining({ code: 'C', code_verifier: 'V', client_id: 'mihomo-party' }),
+      expect.objectContaining({ code: 'C', code_verifier: 'V', client_id: 'clash-caesar' }),
       expect.any(Object)
     )
   })

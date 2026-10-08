@@ -182,7 +182,7 @@ docker compose exec gateway cpx-admin del-user alice
 node scripts/plugin/gen-cpx.mjs https://<domain>/oauth/authorize "Your Airport" https://<domain> your-airport.cpx
 ```
 
-分发 `your-airport.cpx`。用户在 Clash Party 中导入后，会通过系统浏览器打开登录页。登录成功后，客户端注册设备并拉取该账号绑定的 Clash YAML。
+分发 `your-airport.cpx`。用户在 Clash Caesar 中导入后，会通过系统浏览器打开登录页。登录成功后，客户端注册设备并拉取该账号绑定的 Clash YAML。
 
 ---
 

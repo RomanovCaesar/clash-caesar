@@ -116,7 +116,7 @@ test('full flow: well-known → authorize → enroll → challenge → config �
   const challengeParam = createHash('sha256').update(verifier).digest('base64url')
   const params = {
     response_type: 'code',
-    client_id: 'mihomo-party',
+    client_id: 'clash-caesar',
     redirect_uri: REDIRECT,
     code_challenge: challengeParam,
     code_challenge_method: 'S256',
@@ -146,7 +146,7 @@ test('full flow: well-known → authorize → enroll → challenge → config �
       code,
       code_verifier: verifier,
       redirect_uri: REDIRECT,
-      client_id: 'mihomo-party',
+      client_id: 'clash-caesar',
       devicePubKey: dev.pubKey,
       deviceId: dev.deviceId
     }
@@ -175,7 +175,7 @@ test('a re-used authorization code cannot enroll twice', async () => {
   const challengeParam = createHash('sha256').update(verifier).digest('base64url')
   const params = {
     response_type: 'code',
-    client_id: 'mihomo-party',
+    client_id: 'clash-caesar',
     redirect_uri: REDIRECT,
     code_challenge: challengeParam,
     code_challenge_method: 'S256',
@@ -192,7 +192,7 @@ test('a re-used authorization code cannot enroll twice', async () => {
         code,
         code_verifier: verifier,
         redirect_uri: REDIRECT,
-        client_id: 'mihomo-party',
+        client_id: 'clash-caesar',
         devicePubKey: pubKey,
         deviceId
       }

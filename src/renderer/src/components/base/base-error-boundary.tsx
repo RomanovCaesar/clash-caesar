@@ -2,6 +2,7 @@ import { Button } from '@heroui/react'
 import { ReactNode } from 'react'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 import { useTranslation } from 'react-i18next'
+import { APP_ISSUES_URL, APP_TELEGRAM_URL } from '../../../../shared/appConfig'
 
 const ErrorFallback = ({ error }: FallbackProps): React.ReactElement => {
   const { t } = useTranslation()
@@ -21,7 +22,7 @@ const ErrorFallback = ({ error }: FallbackProps): React.ReactElement => {
         color="primary"
         variant="flat"
         className="ml-2"
-        onPress={() => open('https://github.com/mihomo-party-org/mihomo-party/issues/new/choose')}
+        onPress={() => open(APP_ISSUES_URL)}
       >
         GitHub
       </Button>
@@ -30,7 +31,7 @@ const ErrorFallback = ({ error }: FallbackProps): React.ReactElement => {
         color="primary"
         variant="flat"
         className="ml-2"
-        onPress={() => open('https://t.me/mihomo_party_group')}
+        onPress={() => open(APP_TELEGRAM_URL)}
       >
         Telegram
       </Button>

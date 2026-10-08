@@ -49,7 +49,7 @@ Next steps:
   3) Generate the .cpx plugin file for your users (run from the repository root):
        node scripts/plugin/gen-cpx.mjs https://${DOMAIN}/oauth/authorize "Your Airport" https://${DOMAIN} your-airport.cpx
 
-  4) Distribute your-airport.cpx. Users import it in Clash Party, log in via the
+  4) Distribute your-airport.cpx. Users import it in Clash Caesar, log in via the
      system browser with the account you created, and the subscription loads automatically.
 
 Manage:  docker compose exec gateway cpx-admin list-users | list-devices <name> | revoke-device <id>

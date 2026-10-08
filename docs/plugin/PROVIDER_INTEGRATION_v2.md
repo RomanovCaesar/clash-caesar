@@ -1,4 +1,4 @@
-# Clash Party Provider Integration v2
+# Clash Caesar Provider Integration v2
 
 Client spec: `cpx-plugin/2`.
 
@@ -164,7 +164,7 @@ Client query parameters:
 | Parameter               | Value                                          |
 | ----------------------- | ---------------------------------------------- |
 | `response_type`         | `code`                                         |
-| `client_id`             | `mihomo-party`                                 |
+| `client_id`             | `clash-caesar`                                 |
 | `redirect_uri`          | `http://127.0.0.1:<random-port>/callback`      |
 | `code_challenge`        | `BASE64URL(SHA256(code_verifier))`, no padding |
 | `code_challenge_method` | `S256`                                         |
@@ -359,7 +359,7 @@ Request:
   "code": "<authorize code>",
   "code_verifier": "<PKCE verifier>",
   "redirect_uri": "http://127.0.0.1:<port>/callback",
-  "client_id": "mihomo-party",
+  "client_id": "clash-caesar",
   "devicePubKey": "<base64 Ed25519 public key>",
   "deviceId": "<UUIDv4>"
 }
