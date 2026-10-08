@@ -11,7 +11,7 @@ import { mainWindow } from '../window'
 import { appLogger } from '../utils/logger'
 import { dataDir, exeDir, exePath, isPortable, resourcesFilesDir } from '../utils/dirs'
 import { getAppConfig, getControledMihomoConfig } from '../config'
-import { DEFAULT_MIHOMO_PORTS } from '../../shared/appConfig'
+import { APP_RELEASE_REPO, DEFAULT_MIHOMO_PORTS } from '../../shared/appConfig'
 import { checkAdminPrivileges } from '../core/manager'
 import { parse } from '../utils/yaml'
 import * as chromeRequest from '../utils/chromeRequest'
@@ -77,7 +77,7 @@ async function getGitHubAssetSha256(
 ): Promise<string> {
   const releaseTag = encodeURIComponent(`v${version}`)
   const res = await chromeRequest.get<GitHubRelease>(
-    `https://api.github.com/repos/mihomo-party-org/mihomo-party/releases/tags/${releaseTag}`,
+    `https://api.github.com/repos/${APP_RELEASE_REPO}/releases/tags/${releaseTag}`,
     {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -96,11 +96,17 @@ async function getGitHubAssetSha256(
   return match[1].toLowerCase()
 }
 
+function ensureReleaseRepo(): void {
+  if (!APP_RELEASE_REPO) {
+    throw new Error(i18next.t('common.error.autoUpdateNotSupported'))
+  }
+}
+
 export async function checkUpdate(): Promise<IAppVersion | undefined> {
+  ensureReleaseRepo()
   const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
     await Promise.all([getControledMihomoConfig(), getAppConfig()])
-  const githubUrl =
-    'https://github.com/mihomo-party-org/mihomo-party/releases/latest/download/latest.yml'
+  const githubUrl = `https://github.com/${APP_RELEASE_REPO}/releases/latest/download/latest.yml`
   const res = await tryDownload(buildDownloadUrls(githubUrl, githubProxy), {
     headers: { 'Content-Type': 'application/octet-stream' },
     proxy: updaterProxy(mixedPort),
@@ -148,15 +154,16 @@ export function downloadAndInstallUpdate(version: string): Promise<void> {
 }
 
 async function installUpdate(version: string): Promise<void> {
+  ensureReleaseRepo()
   const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
     await Promise.all([getControledMihomoConfig(), getAppConfig()])
-  const githubBase = `https://github.com/mihomo-party-org/mihomo-party/releases/download/v${version}/`
+  const githubBase = `https://github.com/${APP_RELEASE_REPO}/releases/download/v${version}/`
   const fileMap = {
-    'win32-x64': `clash-party-windows-${version}-x64-setup.exe`,
-    'win32-ia32': `clash-party-windows-${version}-ia32-setup.exe`,
-    'win32-arm64': `clash-party-windows-${version}-arm64-setup.exe`,
-    'darwin-x64': `clash-party-macos-${version}-x64.pkg`,
-    'darwin-arm64': `clash-party-macos-${version}-arm64.pkg`
+    'win32-x64': `clash-caesar-windows-${version}-x64-setup.exe`,
+    'win32-ia32': `clash-caesar-windows-${version}-ia32-setup.exe`,
+    'win32-arm64': `clash-caesar-windows-${version}-arm64-setup.exe`,
+    'darwin-x64': `clash-caesar-macos-${version}-x64.pkg`,
+    'darwin-arm64': `clash-caesar-macos-${version}-arm64.pkg`
   }
   let file = fileMap[`${process.platform}-${process.arch}`]
   if (isPortable()) {

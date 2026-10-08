@@ -85,9 +85,10 @@ export async function setupFirewall(): Promise<void> {
 
   if (process.platform === 'win32') {
     const rules = [
-      { name: 'mihomo', program: mihomoCorePath('mihomo') },
-      { name: 'mihomo-alpha', program: mihomoCorePath('mihomo-alpha') },
-      { name: 'Mihomo Party', program: exePath() }
+      { name: 'Clash Caesar mihomo', program: mihomoCorePath('mihomo') },
+      { name: 'Clash Caesar mihomo-alpha', program: mihomoCorePath('mihomo-alpha') },
+      { name: 'Clash Caesar mihomo-specific', program: mihomoCorePath('mihomo-specific') },
+      { name: 'Clash Caesar', program: exePath() }
     ]
     for (const rule of rules) {
       await execPromise(`netsh advfirewall firewall delete rule name="${rule.name}"`, {

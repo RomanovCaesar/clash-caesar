@@ -14,12 +14,12 @@ function portableDataDir(): string {
 }
 
 // 本地 Electron.app 使用独立的应用名和数据目录，避免开发时访问正式版的
-// `mihomo-party Safe Storage` Keychain item 或修改正式配置。已打包的 dev 预发行版
+// `clash-caesar Safe Storage` Keychain item 或修改正式配置。已打包的 dev 预发行版
 // 仍与正式版共享身份和数据，保持原有滚动升级路径。
 export function configureAppPaths(): void {
   if (!app.isPackaged) {
-    app.setName('mihomo-party-dev')
-    app.setPath('userData', path.join(app.getPath('appData'), 'mihomo-party-dev'))
+    app.setName('clash-caesar-dev')
+    app.setPath('userData', path.join(app.getPath('appData'), 'clash-caesar-dev'))
   }
 
   // portable 模式始终拥有最高优先级。
@@ -167,7 +167,7 @@ export function logPath(): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-  const name = `clash-party-${year}-${month}-${day}`
+  const name = `clash-caesar-${year}-${month}-${day}`
   return path.join(logDir(), `${name}.log`)
 }
 

@@ -235,7 +235,7 @@ function hookTouchCommand(file: string): string {
 
 function coreHookDir(): string {
   if (process.platform === 'win32' && process.env.ProgramData) {
-    return path.join(process.env.ProgramData, 'mihomo-party', 'core-hooks')
+    return path.join(process.env.ProgramData, 'clash-caesar', 'core-hooks')
   }
 
   return path.join(dataDir(), 'core-hooks')
@@ -405,13 +405,13 @@ export const getMihomoIpcPath = (): string => {
     const processId = process.pid
 
     return isAdmin
-      ? `\\\\.\\pipe\\MihomoParty\\mihomo-admin-${sessionId}-${processId}`
-      : `\\\\.\\pipe\\MihomoParty\\mihomo-user-${sessionId}-${processId}`
+      ? `\\\\.\\pipe\\ClashCaesar\\mihomo-admin-${sessionId}-${processId}`
+      : `\\\\.\\pipe\\ClashCaesar\\mihomo-user-${sessionId}-${processId}`
   }
 
   const uid = process.getuid?.() || 'unknown'
   const processId = process.pid
-  return `/tmp/mihomo-party-${uid}-${processId}.sock`
+  return `/tmp/clash-caesar-${uid}-${processId}.sock`
 }
 
 // 核心配置接口

@@ -602,7 +602,7 @@ export async function validateProfileCandidate(
   content: string,
   opts: CheckProfileOptions & { globalOverrideIds?: string[] } = {}
 ): Promise<void> {
-  const candidateDir = await mkdtemp(join(tmpdir(), 'mihomo-party-profile-'))
+  const candidateDir = await mkdtemp(join(tmpdir(), 'clash-caesar-profile-'))
   const candidatePath = join(candidateDir, 'config.yaml')
 
   try {

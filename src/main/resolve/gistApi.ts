@@ -63,9 +63,9 @@ async function createGist(token: string, content: string): Promise<void> {
   const res = await chromeRequest.post(
     'https://api.github.com/gists',
     {
-      description: 'Auto Synced Clash Party Runtime Config',
+      description: 'Auto Synced Clash Caesar Runtime Config',
       public: false,
-      files: { 'clash-party.yaml': { content } }
+      files: { 'clash-caesar.yaml': { content } }
     },
     {
       headers: {
@@ -88,8 +88,8 @@ async function updateGist(token: string, id: string, content: string): Promise<v
   const res = await chromeRequest.patch(
     `https://api.github.com/gists/${id}`,
     {
-      description: 'Auto Synced Clash Party Runtime Config',
-      files: { 'clash-party.yaml': { content } }
+      description: 'Auto Synced Clash Caesar Runtime Config',
+      files: { 'clash-caesar.yaml': { content } }
     },
     {
       headers: {
@@ -111,13 +111,15 @@ export async function getGistUrl(): Promise<string> {
   const { githubToken } = await getAppConfig()
   if (!githubToken) return ''
   const gists = await listGists(githubToken)
-  const gist = gists.find((gist) => gist.description === 'Auto Synced Clash Party Runtime Config')
+  const gist = gists.find((gist) => gist.description === 'Auto Synced Clash Caesar Runtime Config')
   if (gist) {
     return gist.html_url
   } else {
     await uploadRuntimeConfig()
     const gists = await listGists(githubToken)
-    const gist = gists.find((gist) => gist.description === 'Auto Synced Clash Party Runtime Config')
+    const gist = gists.find(
+      (gist) => gist.description === 'Auto Synced Clash Caesar Runtime Config'
+    )
     if (!gist) throw new Error('Gist not found')
     return gist.html_url
   }
@@ -127,7 +129,7 @@ async function uploadRuntimeConfigContent(runtimeConfig: string): Promise<boolea
   const { githubToken, gistAgeEncrypt = false, gistAgeRecipient } = await getAppConfig()
   if (!githubToken) return false
   const gists = await listGists(githubToken)
-  const gist = gists.find((gist) => gist.description === 'Auto Synced Clash Party Runtime Config')
+  const gist = gists.find((gist) => gist.description === 'Auto Synced Clash Caesar Runtime Config')
   const config = gistAgeEncrypt
     ? await encryptAgeContent(runtimeConfig, gistAgeRecipient, 'gist runtime config')
     : runtimeConfig
@@ -209,7 +211,7 @@ export async function exportGistAgeSecretKey(): Promise<boolean> {
 
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Export Gist Age Private Key',
-    defaultPath: 'clash-party-gist-age-secret-key.txt',
+    defaultPath: 'clash-caesar-gist-age-secret-key.txt',
     filters: [{ name: 'Text File', extensions: ['txt'] }]
   })
 

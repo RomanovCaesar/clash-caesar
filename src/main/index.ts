@@ -283,7 +283,7 @@ async function ensureNoHighPrivilegeCore(isAdmin: boolean): Promise<boolean> {
 app
   .whenReady()
   .then(async () => {
-    electronApp.setAppUserModelId('party.mihomo.app')
+    electronApp.setAppUserModelId('app.clash.caesar')
 
     const { appConfig, adminPromise } = await initPromise
     beginCoreInitialization()

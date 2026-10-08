@@ -1,7 +1,6 @@
 import { exec, execFile } from 'child_process'
 import { promisify } from 'util'
 import { readdir, rm } from 'fs/promises'
-import { existsSync } from 'fs'
 import { managerLogger } from '../utils/logger'
 import { getAxios } from './mihomoApi'
 
@@ -131,33 +130,14 @@ function isPidAlive(pid: number): boolean {
 export async function cleanupUnixSockets(): Promise<void> {
   const uid = process.getuid?.() ?? 'user'
 
-  // Legacy fixed socket paths from older releases. These never contain a PID
-  // and are safe to remove unconditionally if they exist.
-  const legacyPaths = [
-    '/tmp/mihomo-party.sock',
-    '/tmp/mihomo-party-admin.sock',
-    `/tmp/mihomo-party-${uid}.sock`
-  ]
-
-  for (const socketPath of legacyPaths) {
-    try {
-      if (existsSync(socketPath)) {
-        await rm(socketPath)
-        managerLogger.info(`Cleaned up legacy socket file: ${socketPath}`)
-      }
-    } catch (error) {
-      managerLogger.warn(`Failed to cleanup socket file ${socketPath}:`, error)
-    }
-  }
-
-  // Current getMihomoIpcPath() produces /tmp/mihomo-party-<uid>-<pid>.sock,
+  // Current getMihomoIpcPath() produces /tmp/clash-caesar-<uid>-<pid>.sock,
   // where <pid> is the parent Electron main-process PID. Previous versions
   // never garbage-collected these when the parent exited, so /tmp accumulates
   // one file per historical session. Sweep them now, but ONLY delete files
   // whose parent PID is no longer running to avoid nuking a sibling instance
   // (another Party window from a different user, an admin-elevated session,
   // etc.) that legitimately owns its own socket.
-  const currentPrefix = `mihomo-party-${uid}-`
+  const currentPrefix = `clash-caesar-${uid}-`
   try {
     const entries = await readdir('/tmp')
     for (const name of entries) {

@@ -17,7 +17,7 @@ const WebdavConfig: React.FC = () => {
     webdavUrl,
     webdavUsername,
     webdavPassword,
-    webdavDir = 'clash-party',
+    webdavDir = 'clash-caesar',
     webdavMaxBackups = 0,
     webdavBackupCron,
     webdavIgnoreCert = false

@@ -1,5 +1,5 @@
-appId: party.mihomo.app
-productName: Clash Party
+appId: app.clash.caesar
+productName: Clash Caesar
 directories:
   buildResources: build
 files:
@@ -21,23 +21,23 @@ extraResources:
   - from: './extra/'
     to: ''
 protocols:
-  name: 'Clash Party URI Scheme'
+  name: 'Clash Caesar URI Scheme'
   schemes:
     - 'clash'
     - 'mihomo'
 fileAssociations:
   - ext: 'cpx'
-    name: 'Clash Party Plugin'
-    description: 'Clash Party airport plugin descriptor'
-    mimeType: 'application/x-clash-party-plugin'
+    name: 'Clash Caesar Plugin'
+    description: 'Clash Caesar airport plugin descriptor'
+    mimeType: 'application/x-clash-caesar-plugin'
     role: 'Viewer'
 win:
   target:
     - nsis
     - 7z
-  artifactName: clash-party-windows-${version}-${arch}-portable.${ext}
+  artifactName: clash-caesar-windows-${version}-${arch}-portable.${ext}
 nsis:
-  artifactName: clash-party-windows-${version}-${arch}-setup.${ext}
+  artifactName: clash-caesar-windows-${version}-${arch}-setup.${ext}
   uninstallDisplayName: ${productName}
   allowToChangeInstallationDirectory: true
   oneClick: false
@@ -58,7 +58,7 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
-  artifactName: clash-party-macos-${version}-${arch}.${ext}
+  artifactName: clash-caesar-macos-${version}-${arch}.${ext}
 pkg:
   allowAnywhere: false
   allowCurrentUserHome: false
@@ -67,24 +67,24 @@ pkg:
     alignment: bottomleft
     file: build/background.png
 linux:
-  executableName: mihomo-party
+  executableName: clash-caesar
   icon: build/icon.png
   desktop:
     entry:
-      Name: Clash Party
+      Name: Clash Caesar
       GenericName: Proxy Client
       Comment: A GUI client based on Mihomo
       MimeType: 'x-scheme-handler/clash;x-scheme-handler/mihomo'
       Keywords: proxy;clash;mihomo;vpn;
-      StartupWMClass: mihomo-party
-      Icon: mihomo-party
+      StartupWMClass: clash-caesar
+      Icon: clash-caesar
   target:
     - deb
     - rpm
     - pacman
-  maintainer: mihomo-party-org
+  maintainer: clash-caesar
   category: Utility
-  artifactName: clash-party-linux-${version}-${arch}.${ext}
+  artifactName: clash-caesar-linux-${version}-${arch}.${ext}
 deb:
   afterInstall: 'build/linux/postinst'
   afterRemove: 'build/linux/postuninst'
@@ -117,6 +117,6 @@ pacman:
     - util-linux-libs
     - libsecret
     - wl-clipboard
-  artifactName: clash-party-linux-${version}-${arch}.pkg.tar.zst
+  artifactName: clash-caesar-linux-${version}-${arch}.pkg.tar.zst
 npmRebuild: true
 publish: []

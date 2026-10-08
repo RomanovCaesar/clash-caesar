@@ -2,7 +2,7 @@
 set -e
 
 # 设置日志文件
-LOG_FILE="/tmp/mihomo-party-install.log"
+LOG_FILE="/tmp/clash-caesar-install.log"
 exec > "$LOG_FILE" 2>&1
 
 log() {
@@ -19,7 +19,7 @@ fi
 if [[ $2 == *".app" ]]; then
     APP_PATH="$2"
 else
-    APP_PATH="$2/Clash Party.app"
+    APP_PATH="$2/Clash Caesar.app"
 fi
 
 HELPER_PATH="/Library/PrivilegedHelperTools/party.mihomo.helper"
@@ -154,7 +154,7 @@ log "Fixing user data directory permissions..."
 for user_home in /Users/*; do
     if [ -d "$user_home" ] && [ "$(basename "$user_home")" != "Shared" ] && [ "$(basename "$user_home")" != ".localized" ]; then
         username=$(basename "$user_home")
-        user_data_dir="$user_home/Library/Application Support/mihomo-party"
+        user_data_dir="$user_home/Library/Application Support/clash-caesar"
 
         if [ -d "$user_data_dir" ]; then
             current_owner=$(stat -f "%Su" "$user_data_dir" 2>/dev/null || echo "unknown")

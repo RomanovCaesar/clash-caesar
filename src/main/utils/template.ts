@@ -41,7 +41,7 @@ export const defaultConfig: IAppConfig = {
   autoQuitWithoutCoreMode: 'core',
   proxyDisplayMode: 'simple',
   proxyDisplayOrder: 'default',
-  autoCheckUpdate: true,
+  autoCheckUpdate: false,
   autoUpdateProfileOnStart: true,
   silentUpdate: true,
   autoCloseConnection: true,

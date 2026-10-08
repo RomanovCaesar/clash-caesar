@@ -96,7 +96,7 @@ const GeneralConfig: React.FC = () => {
     autoQuitWithoutCoreMode = 'core',
     customTheme = 'default.css',
     envType = [platform === 'win32' ? 'powershell' : 'bash'],
-    autoCheckUpdate = true,
+    autoCheckUpdate = false,
     autoUpdateProfileOnStart = true,
     silentUpdate = true,
     githubProxy = 'auto',

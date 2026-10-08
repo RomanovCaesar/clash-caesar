@@ -8,9 +8,6 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # 清理可能存在的旧版本文件
-rm -rf "/Applications/Clash Party.app"
-rm -rf "/Applications/Clash\\ Party.app"
-rm -rf "/Applications/Mihomo Party.app"
-rm -rf "/Applications/Mihomo\\ Party.app"
+rm -rf "/Applications/Clash Caesar.app"
 
 exit 0

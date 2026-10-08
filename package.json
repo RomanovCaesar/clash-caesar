@@ -1,11 +1,10 @@
 {
-  "name": "mihomo-party",
+  "name": "clash-caesar",
   "version": "2.0.3",
-  "description": "Clash Party",
+  "description": "Clash Caesar",
   "type": "module",
   "main": "./out/main/index.js",
-  "author": "mihomo-party-org",
-  "homepage": "https://clashparty.org",
+  "author": "clash-caesar",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
