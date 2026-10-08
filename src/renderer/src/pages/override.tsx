@@ -24,8 +24,6 @@ import { SortableContext } from '@dnd-kit/sortable'
 import { useOverrideConfig } from '@renderer/hooks/use-override-config'
 import OverrideItem from '@renderer/components/override/override-item'
 import { FaPlus } from 'react-icons/fa6'
-import { HiOutlineDocumentText } from 'react-icons/hi'
-import { RiArchiveLine } from 'react-icons/ri'
 import { useTranslation } from 'react-i18next'
 
 const Override: React.FC = () => {
@@ -149,38 +147,7 @@ const Override: React.FC = () => {
   }, [items])
 
   return (
-    <BasePage
-      ref={pageRef}
-      title={t('override.title')}
-      header={
-        <>
-          <Button
-            size="sm"
-            variant="light"
-            title={t('override.docs')}
-            isIconOnly
-            className="app-nodrag"
-            onPress={() => {
-              open('https://clashparty.org/docs/guide/override')
-            }}
-          >
-            <HiOutlineDocumentText className="text-lg" />
-          </Button>
-          <Button
-            className="app-nodrag"
-            title={t('override.repository')}
-            isIconOnly
-            variant="light"
-            size="sm"
-            onPress={() => {
-              open('https://github.com/mihomo-party-org/override-hub')
-            }}
-          >
-            <RiArchiveLine className="text-lg" />
-          </Button>
-        </>
-      }
-    >
+    <BasePage ref={pageRef} title={t('override.title')}>
       <div className="sticky top-0 z-40 bg-background">
         <div className="flex p-2">
           <Input
@@ -241,7 +208,7 @@ const Override: React.FC = () => {
                   await addOverrideItem({
                     name: t('override.newFile.yaml'),
                     type: 'local',
-                    file: t('override.defaultContent.yaml'),
+                    file: '',
                     ext: 'yaml'
                   })
                 } else if (key === 'new-js') {
