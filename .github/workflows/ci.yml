@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - smart_core
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/issues.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck & format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      # --ignore-scripts skips the prepare step that downloads the mihomo cores;
+      # none of the static checks or unit tests need the sidecar binaries.
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+      - name: Format check
+        run: pnpm run format:check
+      - name: Lint
+        run: pnpm run lint:check
+      - name: Typecheck
+        run: pnpm run typecheck
+
+  test:
+    name: Unit tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+      - name: Test
+        run: pnpm test

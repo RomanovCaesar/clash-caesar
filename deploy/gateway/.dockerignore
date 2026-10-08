@@ -1,0 +1,14 @@
+# Keep tests, fixtures (incl. the self-signed test cert), and dev-only tooling out of the image.
+**/*.test.mjs
+src/__fixtures__
+check-vectors.mjs
+.env
+.env.bak
+*.db
+*.db-*
+node_modules
+README.md
+Dockerfile
+docker-compose.yml
+Caddyfile
+deploy.sh

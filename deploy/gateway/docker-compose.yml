@@ -1,0 +1,33 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      # Comma-separated domains Caddy serves; falls back to the single DOMAIN.
+      DOMAINS: ${DOMAINS:-${DOMAIN:?set DOMAIN (or DOMAINS) in .env}}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - gateway
+
+  gateway:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /data/gateway.db
+    volumes:
+      - gateway_data:/data
+    # Not published to the host — only reachable inside the compose network as gateway:8080.
+    expose:
+      - '8080'
+
+volumes:
+  caddy_data:
+  caddy_config:
+  gateway_data:
