@@ -13,8 +13,7 @@ import {
   getAppConfig,
   getControledMihomoConfig,
   getProfileItem,
-  patchControledMihomoConfig,
-  manageSmartOverride
+  patchControledMihomoConfig
 } from '../config'
 import {
   dataDir,
@@ -48,7 +47,6 @@ import {
 } from './mihomoApi'
 import { generateProfile } from './factory'
 import { syncControlDnsAfterApply, type DnsOverrideGuardResult } from './dnsOverrideGuard'
-import { syncSmartModelToTestDir } from './smartModel'
 import {
   checkAdminRestartForTun as checkAdminRestartForTunWithRestart,
   getSessionAdminStatus,
@@ -91,7 +89,7 @@ const coreShutdownTimeout = 3000
 const resumeReloadDelay = 5000
 // 同一次失败内核可能连打多行，10 秒内只提示一次，避免弹窗刷屏
 const tunFailureReportInterval = 10000
-const coreProcessNames = ['mihomo', 'mihomo-alpha', 'mihomo-smart'] as const
+const coreProcessNames = ['mihomo', 'mihomo-alpha', 'mihomo-specific'] as const
 
 // 核心进程状态
 interface CoreProcessWatchdog {
@@ -467,9 +465,6 @@ async function prepareCore(detached: boolean, skipStop = false): Promise<CoreCon
 
   // 清理轻量模式遗留的后台核心
   await stopPidFileCore()
-
-  // 管理 Smart 内核覆写配置
-  await manageSmartOverride()
 
   // generateProfile 返回实际使用的 current
   const { profileId: current, dnsGuard } = await generateProfile()
@@ -1076,7 +1071,6 @@ export async function checkProfileConfig(
   opts: CheckProfileOptions = {}
 ): Promise<void> {
   const corePath = mihomoCorePath(core)
-  await syncSmartModelToTestDir()
 
   try {
     await execFilePromise(corePath, ['-t', '-f', configPath, '-d', mihomoTestDir()], {

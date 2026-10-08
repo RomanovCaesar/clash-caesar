@@ -2,7 +2,6 @@ import { copyFile, mkdir, readFile, stat } from 'fs/promises'
 import vm from 'vm'
 import { existsSync, writeFileSync } from 'fs'
 import path from 'path'
-import { isIP } from 'net'
 import {
   getControledMihomoConfig,
   getProfileConfig,
@@ -29,7 +28,6 @@ import { atomicWriteFile } from '../utils/safeFile'
 import { evaluateDnsOverrideGuard, type DnsOverrideGuardResult } from './dnsOverrideGuard'
 
 const factoryLogger = createLogger('Factory')
-const SMART_OVERRIDE_ID = 'smart-core-override'
 
 let runtimeConfigStr: string = ''
 let runtimeConfig: IMihomoConfig = {} as IMihomoConfig
@@ -88,49 +86,6 @@ function processRulesWithOffset(ruleStrings: string[], currentRules: string[], i
   return { normalRules, insertRules: rules }
 }
 
-/**
- * 确保在启用特定条件（如 Smart 覆写）且启用了 TUN 模式时，将代理服务器的 IP 地址添加到路由排除列表中，以避免路由回环。
- * 该函数会遍历配置中的所有代理节点，提取出服务器的 IP 地址（支持 IPv4/IPv6），并将其转换为对应的 CIDR 格式（IPv4: /32, IPv6: /128）。
- *
- * @param profile 当前的 Mihomo 配置对象
- * @param enabled 是否需要执行排除逻辑（通常为是否启用了 Smart 核心覆写）
- * @returns 此次新添加到排除列表中的网段/IP 数组
- */
-function ensureSmartProxyServerTunExclude(profile: IMihomoConfig, enabled: boolean): string[] {
-  if (!enabled || profile.tun?.enable !== true || !Array.isArray(profile.proxies)) return []
-
-  const routeExcludeAddress = Array.isArray(profile.tun['route-exclude-address'])
-    ? [...profile.tun['route-exclude-address']]
-    : []
-  profile.tun['route-exclude-address'] = routeExcludeAddress
-
-  const existing = new Set(routeExcludeAddress.map((address) => address.trim().toLowerCase()))
-  const added: string[] = []
-
-  for (const proxy of profile.proxies as unknown[]) {
-    if (!proxy || typeof proxy !== 'object') continue
-
-    const server = (proxy as Record<string, unknown>).server
-    if (typeof server !== 'string' && typeof server !== 'number') continue
-
-    const host = String(server)
-      .trim()
-      .replace(/^\[(.*)\]$/, '$1')
-      .toLowerCase()
-    const ipVersion = isIP(host)
-    if (!ipVersion) continue
-
-    const cidr = ipVersion === 4 ? `${host}/32` : `${host}/128`
-    if (existing.has(host) || existing.has(cidr)) continue
-
-    routeExcludeAddress.push(cidr)
-    existing.add(cidr)
-    added.push(cidr)
-  }
-
-  return added
-}
-
 export async function generateProfile(
   pendingControledMihomoConfig?: Partial<IMihomoConfig>,
   options: GenerateProfileOptions = {}
@@ -163,17 +118,8 @@ export async function generateProfile(
     options.updateRuntimeConfig !== false
   )
   const { controlDns } = dnsGuard
-  const profileWithNormalOverride = await applyOverrides(
-    baseProfile,
-    overrideIds.normal,
-    ageSecretKey
-  )
-  const profileWithRuleOverride = await applyRuleOverride(profileId, profileWithNormalOverride)
-  const currentProfile = await applyOverrides(
-    profileWithRuleOverride,
-    overrideIds.smart,
-    ageSecretKey
-  )
+  const profileWithOverride = await applyOverrides(baseProfile, overrideIds, ageSecretKey)
+  const currentProfile = await applyRuleOverride(profileId, profileWithOverride)
 
   // 根据开关状态过滤控制配置
   controledMihomoConfig = { ...controledMihomoConfig }
@@ -192,17 +138,6 @@ export async function generateProfile(
   // 关闭 DNS 覆写时，如果最终配置没有启用的 DNS 配置，清空 dns-hijack 避免请求被劫持但无法处理
   if (!controlDns && profile.tun && !profile.dns?.enable) {
     profile.tun = { ...profile.tun, 'dns-hijack': [] }
-  }
-  // Smart Override JS 早于受控 TUN 配置合并执行；最终配置写出前再排除代理服务器 IP。
-  const addedProxyServerRouteExcludes = ensureSmartProxyServerTunExclude(
-    profile,
-    overrideIds.smart.length > 0
-  )
-  if (addedProxyServerRouteExcludes.length > 0) {
-    factoryLogger.info(
-      'Added Smart Override proxy server TUN route excludes',
-      addedProxyServerRouteExcludes
-    )
   }
   // 删除空的局域网允许列表，避免局域网访问异常
   if (!profile['lan-allowed-ips']?.length) {
@@ -331,8 +266,7 @@ async function prepareProfileWorkDir(current: string | undefined): Promise<void>
     copy('geoip.dat'),
     copy('geosite.dat'),
     copy('ASN.mmdb'),
-    copy('BundleMRS.7z'),
-    copy('Model.bin')
+    copy('BundleMRS.7z')
   ])
 }
 
@@ -340,18 +274,10 @@ async function getOrderedOverrideIds(
   current: string | undefined,
   profileOverrideIds?: string[],
   globalOverrideIds?: string[]
-): Promise<{
-  normal: string[]
-  smart: string[]
-}> {
+): Promise<string[]> {
   const globalOverride = globalOverrideIds ?? (await globalOverrideIdsNow())
   const override = profileOverrideIds ?? (await getProfileItem(current))?.override ?? []
-  const orderedOverrideIds = [...new Set(globalOverride.concat(override))]
-
-  return {
-    normal: orderedOverrideIds.filter((id) => id !== SMART_OVERRIDE_ID),
-    smart: orderedOverrideIds.filter((id) => id === SMART_OVERRIDE_ID)
-  }
+  return [...new Set(globalOverride.concat(override))]
 }
 
 async function applyOverrides(

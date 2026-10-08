@@ -28,9 +28,3 @@ export {
   setOverride,
   updateOverrideItem
 } from './override'
-export {
-  createSmartOverride,
-  removeSmartOverride,
-  manageSmartOverride,
-  isSmartOverrideExists
-} from './smartOverride'

@@ -17,14 +17,11 @@ import {
   mihomoUnfixedProxy,
   mihomoUpdateProxyProviders,
   mihomoUpdateRuleProviders,
-  mihomoUpgrade,
   mihomoUpgradeGeo,
   mihomoUpgradeUI,
   mihomoHotReloadConfig,
   mihomoVersion,
   patchMihomoConfig,
-  mihomoSmartGroupWeights,
-  mihomoSmartFlushCache,
   mihomoRulesDisable
 } from '../core/mihomoApi'
 import { checkAutoRun, disableAutoRun, enableAutoRun } from '../sys/autoRun'
@@ -92,7 +89,6 @@ import {
 } from '../sys/misc'
 import { getRuntimeConfig, getRuntimeConfigStr } from '../core/factory'
 import { setControlDns, takeDnsOverrideAutoDisabledNotice } from '../core/dnsOverrideGuard'
-import { getSmartModelStatus, downloadSmartModel } from '../core/smartModel'
 import {
   listWebdavBackups,
   webdavBackup,
@@ -146,7 +142,7 @@ import { get as httpGet } from './chromeRequest'
 import { getIconDataURL } from './icon'
 import { getAppName } from './appName'
 import { logDir, rulePath } from './dirs'
-import { installMihomoCore, getGitHubTags, clearVersionCache } from './github'
+import { installMihomoCore, upgradeMihomoCore, getGitHubTags, clearVersionCache } from './github'
 import { atomicWriteFile } from './safeFile'
 import { startSubStoreServices } from './init'
 
@@ -203,15 +199,6 @@ async function setRuleStr(id: string, str: string): Promise<void> {
   await atomicWriteFile(rulePath(id), str, { encoding: 'utf8' })
 }
 
-async function getSmartOverrideContent(): Promise<string | null> {
-  try {
-    const override = await getOverrideItem('smart-core-override')
-    return override?.file || null
-  } catch {
-    return null
-  }
-}
-
 async function fetchIPInfo(url: string): Promise<unknown> {
   const res = await httpGet<unknown>(url, { timeout: 10000, responseType: 'json' })
   return res.data
@@ -258,13 +245,10 @@ const asyncHandlers: Record<string, AsyncFn> = {
   mihomoChangeProxy,
   mihomoUnfixedProxy,
   mihomoUpgradeGeo,
-  mihomoUpgrade,
   mihomoUpgradeUI,
   mihomoProxyDelay,
   mihomoGroupDelay,
   patchMihomoConfig,
-  mihomoSmartGroupWeights,
-  mihomoSmartFlushCache,
   // AutoRun
   checkAutoRun,
   enableAutoRun,
@@ -304,14 +288,11 @@ const asyncHandlers: Record<string, AsyncFn> = {
   convertMrsRuleset,
   getRuntimeConfig,
   getRuntimeConfigStr,
-  getSmartOverrideContent,
   getRuleStr,
   setRuleStr,
   readTextFile,
   // Core
   restartCore,
-  getSmartModelStatus,
-  downloadSmartModel,
   mihomoHotReloadConfig,
   startMonitor,
   quitWithoutCore,
@@ -335,6 +316,7 @@ const asyncHandlers: Record<string, AsyncFn> = {
   downloadAndInstallUpdate,
   fetchMihomoTags,
   installSpecificMihomoCore,
+  upgradeMihomoCore,
   clearMihomoVersionCache,
   // Backup
   webdavBackup,

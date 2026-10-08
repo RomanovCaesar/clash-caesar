@@ -15,8 +15,10 @@ import { triggerSysProxy } from '../sys/sysproxy'
 import {
   getAppConfig,
   getControledMihomoConfig,
+  getOverrideItem,
   patchAppConfig,
-  patchControledMihomoConfig
+  patchControledMihomoConfig,
+  removeOverrideItem
 } from '../config'
 import { startSSIDCheck } from '../sys/ssid'
 import { initResumeRecovery } from '../sys/resume'
@@ -162,7 +164,7 @@ async function killOldMihomoProcesses(): Promise<void> {
 
   try {
     const execFilePromise = promisify(execFile)
-    const coreNames = new Set(['mihomo.exe', 'mihomo-alpha.exe', 'mihomo-smart.exe'])
+    const coreNames = new Set(['mihomo.exe', 'mihomo-alpha.exe', 'mihomo-specific.exe'])
     const { stdout } = await execFilePromise('tasklist', ['/FO', 'CSV', '/NH'], {
       windowsHide: true,
       timeout: 3000,
@@ -410,6 +412,42 @@ async function migrateMihomoConfig(): Promise<void> {
   }
 }
 
+// 迁移：移除 Smart 内核支持
+const LEGACY_SMART_OVERRIDE_ID = 'smart-core-override'
+const LEGACY_SMART_APP_KEYS = [
+  'enableSmartCore',
+  'enableSmartOverride',
+  'smartCoreUseLightGBM',
+  'smartCoreCollectData',
+  'smartCollectorSize'
+]
+const LEGACY_SMART_MIHOMO_KEYS = ['lgbm-auto-update', 'lgbm-update-interval', 'lgbm-url']
+
+async function migrateRemoveSmartCore(): Promise<void> {
+  const appConfig = (await getAppConfig()) as IAppConfig & Record<string, unknown>
+  const appPatch: Record<string, unknown> = {}
+  if ((appConfig.core as string) === 'mihomo-smart') appPatch.core = 'mihomo'
+  for (const key of LEGACY_SMART_APP_KEYS) {
+    if (key in appConfig) appPatch[key] = undefined
+  }
+  if (Object.keys(appPatch).length > 0) {
+    await patchAppConfig(appPatch as Partial<IAppConfig>)
+  }
+
+  const mihomoConfig = (await getControledMihomoConfig()) as Record<string, unknown>
+  const mihomoPatch: Record<string, unknown> = {}
+  for (const key of LEGACY_SMART_MIHOMO_KEYS) {
+    if (key in mihomoConfig) mihomoPatch[key] = undefined
+  }
+  if (Object.keys(mihomoPatch).length > 0) {
+    await patchControledMihomoConfig(mihomoPatch as Partial<IMihomoConfig>)
+  }
+
+  if (await getOverrideItem(LEGACY_SMART_OVERRIDE_ID)) {
+    await removeOverrideItem(LEGACY_SMART_OVERRIDE_ID)
+  }
+}
+
 async function migration(): Promise<void> {
   await Promise.all([
     migrateSiderOrder(),
@@ -417,7 +455,8 @@ async function migration(): Promise<void> {
     migrateEnvType(),
     migrateTraySettings(),
     migrateRemovePassword(),
-    migrateMihomoConfig()
+    migrateMihomoConfig(),
+    migrateRemoveSmartCore()
   ])
 }
 

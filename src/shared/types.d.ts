@@ -274,22 +274,9 @@ interface ITrayTrafficStyle {
   textColor: string
 }
 
-type SmartModelVariant = 'standard' | 'middle' | 'large'
-
-interface ISmartModelStatus {
-  state: 'missing' | 'damaged' | 'ready'
-  size: number
-  modified?: number
-}
-
 interface IAppConfig {
-  core: 'mihomo' | 'mihomo-alpha' | 'mihomo-smart' | 'mihomo-specific'
+  core: 'mihomo' | 'mihomo-alpha' | 'mihomo-specific'
   specificVersion?: string
-  enableSmartCore: boolean
-  enableSmartOverride: boolean
-  smartCoreUseLightGBM: boolean
-  smartCoreCollectData: boolean
-  smartCollectorSize?: number
   proxyDisplayMode: 'simple' | 'full'
   proxyDisplayOrder: 'default' | 'delay' | 'name'
   profileDisplayDate?: 'expire' | 'update'
@@ -546,9 +533,6 @@ interface IMihomoConfig {
   'geodata-mode'?: boolean
   'geo-auto-update'?: boolean
   'geo-update-interval'?: number
-  'lgbm-auto-update'?: boolean
-  'lgbm-update-interval'?: number
-  'lgbm-url'?: string
   'geox-url'?: {
     geoip?: string
     geosite?: string

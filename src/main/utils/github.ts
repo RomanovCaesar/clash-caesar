@@ -1,15 +1,18 @@
-import { chmodSync, createWriteStream, createReadStream, existsSync, renameSync, rmSync } from 'fs'
-import { writeFile } from 'fs/promises'
+import { execFile } from 'child_process'
+import { existsSync } from 'fs'
+import { chmod, rename, rm, writeFile } from 'fs/promises'
 import { platform } from 'os'
-import { join } from 'path'
-import { createGunzip } from 'zlib'
+import { setTimeout as delay } from 'timers/promises'
+import { promisify } from 'util'
+import { gunzipSync } from 'zlib'
 import AdmZip from 'adm-zip'
-import { stopCore } from '../core/manager'
-import { getAppConfig } from '../config'
-import { mihomoCoreDir } from './dirs'
+import { hasCoreProcess, restartCore, stopCore } from '../core/manager'
+import { getAppConfig, patchAppConfig } from '../config'
+import { mihomoCorePath } from './dirs'
 import * as chromeRequest from './chromeRequest'
 import { createLogger } from './logger'
 
+const execFilePromise = promisify(execFile)
 const log = createLogger('GitHub')
 
 const GITHUB_PROXIES = [
@@ -18,14 +21,6 @@ const GITHUB_PROXIES = [
   'https://down.clashparty.org',
   'https://download.mihomo.party'
 ]
-
-function cleanupTempFile(path: string): void {
-  try {
-    if (existsSync(path)) rmSync(path)
-  } catch (error) {
-    log.warn(`Failed to remove temporary file ${path}`, error)
-  }
-}
 
 function buildDownloadUrls(githubUrl: string, proxyPref = ''): string[] {
   if (proxyPref === 'direct') return [githubUrl]
@@ -131,38 +126,179 @@ export function clearVersionCache(owner: string, repo: string): void {
 }
 
 /**
- * 下载 GitHub Release 资产
- * @param url 下载 URL
- * @param outputPath 输出路径
+ * 通过镜像列表下载 GitHub 资源，依次尝试直到成功
+ * @param url GitHub 原始地址
+ * @param responseType 返回类型
+ * @param timeout 单个源的超时时间
  */
-export async function downloadGitHubAsset(url: string, outputPath: string): Promise<void> {
+async function fetchGitHubResource<T extends 'text' | 'arraybuffer'>(
+  url: string,
+  responseType: T,
+  timeout: number
+): Promise<T extends 'text' ? string : Buffer> {
   const { githubProxy = '' } = await getAppConfig()
   const urls = buildDownloadUrls(url, githubProxy)
   let lastError: unknown
   for (const candidate of urls) {
     try {
-      log.debug(`Downloading asset from ${candidate}`)
-      const response = await chromeRequest.get(candidate, {
-        responseType: 'arraybuffer',
-        timeout: 30000
-      })
+      log.debug(`Downloading ${candidate}`)
+      const response = await chromeRequest.get(candidate, { responseType, timeout })
       // chromeRequest 对任何状态码都 resolve，所以这里必须自己判断。否则镜像返回的
       // 404/502 错误页会被当成下载成功写进内核文件，而且直接 return、不再尝试后续镜像。
       if (response.status < 200 || response.status >= 300) {
         throw new Error(`HTTP ${response.status} ${response.statusText}`)
       }
-      await writeFile(outputPath, Buffer.from(response.data as Buffer))
-      log.debug(`Successfully downloaded asset to ${outputPath}`)
-      return
+      const data =
+        responseType === 'text' ? String(response.data) : Buffer.from(response.data as Buffer)
+      return data as T extends 'text' ? string : Buffer
     } catch (error) {
       log.warn(`Download failed from ${candidate}, trying next`, error)
       lastError = error
     }
   }
-  log.error(`Failed to download asset from all sources`, lastError)
+  log.error(`Failed to download ${url} from all sources`, lastError)
   throw lastError instanceof Error
     ? new Error(`Download error: ${lastError.message}`)
-    : new Error('Failed to download core file')
+    : new Error(`Failed to download ${url}`)
+}
+
+type CoreChannel = 'release' | 'alpha'
+
+const MIHOMO_RELEASES_URL = 'https://github.com/MetaCubeX/mihomo/releases'
+const CORE_DOWNLOAD_TIMEOUT = 120000
+const VERSION_FETCH_TIMEOUT = 10000
+
+function coreAssetName(): string {
+  const key = `${platform()}-${process.arch}`
+  const name = PLATFORM_MAP[key]
+  if (!name) {
+    throw new Error(`Unsupported platform "${key}"`)
+  }
+  return name
+}
+
+function coreDownloadURL(channel: CoreChannel, version: string): string {
+  const ext = platform() === 'win32' ? 'zip' : 'gz'
+  const tag = channel === 'alpha' ? 'Prerelease-Alpha' : version
+  return `${MIHOMO_RELEASES_URL}/download/${tag}/${coreAssetName()}-${version}.${ext}`
+}
+
+/**
+ * 获取指定通道的最新内核版本号（稳定版形如 v1.19.32，预览版形如 alpha-xxxxxxx）
+ */
+async function fetchLatestCoreVersion(channel: CoreChannel): Promise<string> {
+  const url =
+    channel === 'alpha'
+      ? `${MIHOMO_RELEASES_URL}/download/Prerelease-Alpha/version.txt`
+      : `${MIHOMO_RELEASES_URL}/latest/download/version.txt`
+  const version = (await fetchGitHubResource(url, 'text', VERSION_FETCH_TIMEOUT)).trim()
+  // 镜像出错时可能返回一整页 HTML，不能把它当版本号拼进下载地址
+  if (!/^(v\d+\.\d+\.\d+|alpha-[0-9a-f]+)$/i.test(version)) {
+    throw new Error(`Invalid core version response: ${version.slice(0, 64)}`)
+  }
+  return version
+}
+
+/**
+ * 读取磁盘上内核文件的真实版本号，内核文件不存在或无法执行时返回 undefined
+ */
+export async function getCoreBinaryVersion(core: string): Promise<string | undefined> {
+  const corePath = mihomoCorePath(core)
+  if (!existsSync(corePath)) return undefined
+  try {
+    const { stdout } = await execFilePromise(corePath, ['-v'], {
+      windowsHide: true,
+      timeout: 5000
+    })
+    return stdout.match(/Mihomo Meta (\S+)/)?.[1]
+  } catch (error) {
+    log.warn(`Failed to read version of ${corePath}`, error)
+    return undefined
+  }
+}
+
+/**
+ * 下载内核压缩包并把可执行文件解压到 stagingPath，不触碰正在使用的内核文件
+ */
+async function downloadCoreToStaging(downloadURL: string, stagingPath: string): Promise<void> {
+  const isWin = platform() === 'win32'
+  const archive = await fetchGitHubResource(downloadURL, 'arraybuffer', CORE_DOWNLOAD_TIMEOUT)
+
+  let binary: Buffer
+  if (isWin) {
+    const exeFile = `${coreAssetName()}.exe`
+    const entry = new AdmZip(archive).getEntries().find((e) => e.entryName.endsWith(exeFile))
+    if (!entry) {
+      throw new Error(`Executable file not found in zip: ${exeFile}`)
+    }
+    binary = entry.getData()
+  } else {
+    try {
+      binary = gunzipSync(archive)
+    } catch (error) {
+      throw new Error(
+        `Gzip decompression failed: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  }
+
+  await writeFile(stagingPath, binary)
+  // 用 chmod 而不是拼 shell 命令：macOS 的数据目录路径里带空格
+  if (!isWin) await chmod(stagingPath, 0o755)
+}
+
+/**
+ * 用 stagingPath 原子替换内核文件。Windows 上内核进程刚退出时文件句柄可能还没释放，
+ * 直接替换会报 EBUSY/EPERM，因此短暂重试。
+ */
+async function replaceCoreBinary(stagingPath: string, targetPath: string): Promise<void> {
+  const maxAttempts = 20
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rename(stagingPath, targetPath)
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (attempt >= maxAttempts || (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES')) {
+        throw error
+      }
+      await delay(250)
+    }
+  }
+}
+
+/**
+ * 把内核文件替换为 stagingPath。若当前运行的正是这个内核文件，先停止内核，
+ * 替换完成（无论成功与否）后再重新启动，保证不会留下一个停止的内核。
+ */
+async function installStagedCore(core: string, stagingPath: string): Promise<void> {
+  const targetPath = mihomoCorePath(core)
+  const { core: activeCore = 'mihomo' } = await getAppConfig()
+  const needsRestart = activeCore === core && hasCoreProcess()
+
+  if (needsRestart) {
+    log.debug('Stopping core before replacing core file')
+    await stopCore(true)
+  }
+  try {
+    await replaceCoreBinary(stagingPath, targetPath)
+  } finally {
+    if (needsRestart) await restartCore()
+  }
+}
+
+async function withStagingFile<T>(
+  core: string,
+  task: (stagingPath: string) => Promise<T>
+): Promise<T> {
+  const stagingPath = `${mihomoCorePath(core)}.download`
+  try {
+    return await task(stagingPath)
+  } finally {
+    await rm(stagingPath, { force: true }).catch((error) => {
+      log.warn(`Failed to remove temporary file ${stagingPath}`, error)
+    })
+  }
 }
 
 /**
@@ -172,113 +308,49 @@ export async function downloadGitHubAsset(url: string, outputPath: string): Prom
 export async function installMihomoCore(version: string): Promise<void> {
   try {
     log.info(`Installing mihomo core version ${version}`)
-
-    const plat = platform()
-    const arch = process.arch
-
-    // 映射平台和架构到 GitHub Release 文件名
-    const key = `${plat}-${arch}`
-    const name = PLATFORM_MAP[key]
-
-    if (!name) {
-      throw new Error(`Unsupported platform "${plat}-${arch}"`)
-    }
-
-    const isWin = plat === 'win32'
-    const urlExt = isWin ? 'zip' : 'gz'
-    const downloadURL = `https://github.com/MetaCubeX/mihomo/releases/download/${version}/${name}-${version}.${urlExt}`
-
-    const coreDir = mihomoCoreDir()
-    const tempZip = join(coreDir, `temp-core.${urlExt}`)
-    const exeFile = `${name}${isWin ? '.exe' : ''}`
-    const targetFile = `mihomo-specific${isWin ? '.exe' : ''}`
-    const targetPath = join(coreDir, targetFile)
-
-    // 如果目标文件已存在，先停止核心
-    if (existsSync(targetPath)) {
-      log.debug('Stopping core before extracting new core file')
-      // 先停止核心
-      await stopCore(true)
-    }
-
-    // 下载文件
-    await downloadGitHubAsset(downloadURL, tempZip)
-
-    // 解压文件
-    if (urlExt === 'zip') {
-      log.debug(`Extracting ZIP file ${tempZip}`)
-      const zip = new AdmZip(tempZip)
-      const entries = zip.getEntries()
-      const entry = entries.find((e) => e.entryName.includes(exeFile))
-
-      if (entry) {
-        zip.extractEntryTo(entry, coreDir, false, true, false, targetFile)
-        log.debug(`Successfully extracted ${exeFile} to ${targetPath}`)
-      } else {
-        throw new Error(`Executable file not found in zip: ${exeFile}`)
-      }
-    } else {
-      // 处理.gz 文件
-      // 先解压到临时文件再原子替换：直接往 targetPath 写的话，解压中途失败
-      // 会把原本可用的内核截断成半个文件，用户连回退都没得回退。
-      log.debug(`Extracting GZ file ${tempZip}`)
-      const stagingPath = `${targetPath}.download`
-      const readStream = createReadStream(tempZip)
-      const writeStream = createWriteStream(stagingPath)
-
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const gunzip = createGunzip()
-          const onError = (error: Error): void => {
-            log.error('Gzip decompression failed', error)
-            readStream.destroy()
-            gunzip.destroy()
-            writeStream.destroy()
-            reject(new Error(`Gzip decompression failed: ${error.message}`))
-          }
-
-          readStream.on('error', onError)
-          gunzip.on('error', onError)
-          writeStream.on('error', onError)
-
-          readStream
-            .pipe(gunzip)
-            .pipe(writeStream)
-            .on('finish', () => {
-              log.debug('Gunzip finished')
-              resolve()
-            })
-        })
-
-        // 用 chmodSync 而不是拼 shell 命令：macOS 的数据目录是
-        // ~/Library/Application Support/... ，路径里带空格，未加引号的
-        // `chmod 755 <path>` 必然失败，而失败只被 warn 掉，用户拿到的是
-        // 一个没有执行权限的内核，表现为「装好了但起不来」。
-        chmodSync(stagingPath, 0o755)
-        log.debug('Chmod binary finished')
-        renameSync(stagingPath, targetPath)
-      } catch (error) {
-        try {
-          if (existsSync(stagingPath)) rmSync(stagingPath)
-        } catch {
-          // ignore
-        }
-        throw error
-      }
-    }
-
-    // 清理临时文件
-    log.debug(`Cleaning up temporary file ${tempZip}`)
-    cleanupTempFile(tempZip)
-
+    await withStagingFile('mihomo-specific', async (stagingPath) => {
+      await downloadCoreToStaging(coreDownloadURL('release', version), stagingPath)
+      await installStagedCore('mihomo-specific', stagingPath)
+    })
     log.info(`Successfully installed mihomo core version ${version}`)
   } catch (error) {
-    // 解压失败时下载的压缩包会一直留在内核目录里，每次重试再落一份
-    cleanupTempFile(join(mihomoCoreDir(), `temp-core.zip`))
-    cleanupTempFile(join(mihomoCoreDir(), `temp-core.gz`))
     log.error('Failed to install mihomo core', error)
     throw new Error(
       `Failed to install core: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+}
+
+/**
+ * 把当前选择的内核升级到所在通道的最新版本，返回升级后的版本号。
+ *
+ * 不使用内核自带的 /upgrade 接口：内核在 Windows 上替换自身后会立即拉起一个新进程并退出，
+ * 响应常常来不及完整写回（升级成功却报失败），新进程也脱离了客户端的管理。
+ * 这里由客户端下载、停止内核、替换文件、重启内核，全程可控。
+ */
+export async function upgradeMihomoCore(): Promise<string> {
+  const { core = 'mihomo' } = await getAppConfig()
+  // 特定版本升级到最新稳定版，并同步记录的版本号
+  const channel: CoreChannel = core === 'mihomo-alpha' ? 'alpha' : 'release'
+
+  const [latest, current] = await Promise.all([
+    fetchLatestCoreVersion(channel),
+    getCoreBinaryVersion(core)
+  ])
+  log.info(`Core upgrade check: core=${core}, current=${current}, latest=${latest}`)
+  if (current === latest) {
+    // 渲染进程依赖这段文字识别“已是最新版本”
+    throw new Error(`already using latest version ${latest}`)
+  }
+
+  await withStagingFile(core, async (stagingPath) => {
+    await downloadCoreToStaging(coreDownloadURL(channel, latest), stagingPath)
+    await installStagedCore(core, stagingPath)
+  })
+
+  if (core === 'mihomo-specific') {
+    await patchAppConfig({ specificVersion: latest })
+  }
+  log.info(`Core upgraded to ${latest}`)
+  return latest
 }

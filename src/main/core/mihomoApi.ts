@@ -2,7 +2,7 @@ import { createConnection } from 'net'
 import axios, { AxiosInstance } from 'axios'
 import WebSocket from 'ws'
 import { app } from 'electron'
-import { getAppConfig, getControledMihomoConfig, manageSmartOverride } from '../config'
+import { getAppConfig, getControledMihomoConfig } from '../config'
 import { mainWindow } from '../window'
 import { tray } from '../resolve/tray'
 import { calcTraffic } from '../utils/calc'
@@ -419,11 +419,6 @@ export const mihomoGroupDelay = async (group: string, url?: string): Promise<IMi
   })
 }
 
-export const mihomoUpgrade = async (): Promise<void> => {
-  const instance = await getAxios()
-  return await instance.post('/upgrade', undefined, { timeout: 90000 })
-}
-
 export const mihomoUpgradeUI = async (): Promise<void> => {
   const instance = await getAxios()
   return await instance.post('/upgrade/ui')
@@ -436,9 +431,6 @@ export const mihomoHotReloadConfig = async (): Promise<void> => {
     await restartCore()
     return
   }
-  // Smart 覆写脚本由应用配置生成，必须先同步再生成配置，
-  // 否则界面上改动的 Smart 选项会沿用旧脚本，要等到下次重启内核才生效
-  await manageSmartOverride()
   const { profileId: current, dnsGuard } = await generateProfile()
   const { diffWorkDir = false } = await getAppConfig()
   const configPath = diffWorkDir ? mihomoWorkConfigPath(current) : mihomoWorkConfigPath('work')
@@ -463,23 +455,6 @@ export const mihomoHotReloadConfig = async (): Promise<void> => {
     scheduleRuntimeConfigUpload()
   } catch (error) {
     mihomoApiLogger.warn('Failed to schedule runtime config Gist sync', error)
-  }
-}
-
-// Smart 内核 API
-export const mihomoSmartGroupWeights = async (
-  groupName: string
-): Promise<Record<string, number>> => {
-  const instance = await getAxios()
-  return await instance.get(`/group/${encodeURIComponent(groupName)}/weights`)
-}
-
-export const mihomoSmartFlushCache = async (configName?: string): Promise<void> => {
-  const instance = await getAxios()
-  if (configName) {
-    return await instance.post(`/cache/smart/flush/${encodeURIComponent(configName)}`)
-  } else {
-    return await instance.post('/cache/smart/flush')
   }
 }
 

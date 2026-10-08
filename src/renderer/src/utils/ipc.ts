@@ -36,13 +36,10 @@ interface IpcApi {
   mihomoChangeProxy: (group: string, proxy: string) => Promise<IMihomoProxy>
   mihomoUnfixedProxy: (group: string) => Promise<IMihomoProxy>
   mihomoUpgradeGeo: () => Promise<void>
-  mihomoUpgrade: () => Promise<void>
   mihomoUpgradeUI: () => Promise<void>
   mihomoProxyDelay: (proxy: string, url?: string, provider?: string) => Promise<IMihomoDelay>
   mihomoGroupDelay: (group: string, url?: string) => Promise<IMihomoGroupDelay>
   patchMihomoConfig: (patch: Partial<IMihomoConfig>) => Promise<void>
-  mihomoSmartGroupWeights: (groupName: string) => Promise<Record<string, number>>
-  mihomoSmartFlushCache: (configName?: string) => Promise<void>
   queryTrafficUsageOverview: (
     type: TrafficUsageDimension,
     startTime: number,
@@ -54,7 +51,6 @@ interface IpcApi {
   ) => Promise<TrafficUsageAggregate[]>
   importTrafficUsage: (batch: TrafficUsageImportBatch) => Promise<void>
   clearTrafficUsage: () => Promise<void>
-  getSmartOverrideContent: () => Promise<string | null>
   // AutoRun
   checkAutoRun: () => Promise<boolean>
   enableAutoRun: () => Promise<void>
@@ -103,8 +99,6 @@ interface IpcApi {
   openFile: (type: 'profile' | 'override', id: string, ext?: 'yaml' | 'js') => Promise<void>
   // Core
   restartCore: () => Promise<void>
-  getSmartModelStatus: () => Promise<ISmartModelStatus>
-  downloadSmartModel: (variant: SmartModelVariant) => Promise<ISmartModelStatus>
   mihomoHotReloadConfig: () => Promise<void>
   startMonitor: () => Promise<void>
   quitWithoutCore: () => Promise<void>
@@ -133,6 +127,7 @@ interface IpcApi {
     forceRefresh?: boolean
   ) => Promise<{ name: string; zipball_url: string; tarball_url: string }[]>
   installSpecificMihomoCore: (version: string) => Promise<void>
+  upgradeMihomoCore: () => Promise<string>
   clearMihomoVersionCache: () => Promise<void>
   // Backup
   webdavBackup: () => Promise<boolean>
@@ -224,18 +219,14 @@ export const {
   mihomoChangeProxy,
   mihomoUnfixedProxy,
   mihomoUpgradeGeo,
-  mihomoUpgrade,
   mihomoUpgradeUI,
   mihomoProxyDelay,
   mihomoGroupDelay,
   patchMihomoConfig,
-  mihomoSmartGroupWeights,
-  mihomoSmartFlushCache,
   queryTrafficUsageOverview,
   queryTrafficUsageBreakdown,
   importTrafficUsage,
   clearTrafficUsage,
-  getSmartOverrideContent,
   // AutoRun
   checkAutoRun,
   enableAutoRun,
@@ -284,8 +275,6 @@ export const {
   openFile,
   // Core
   restartCore,
-  getSmartModelStatus,
-  downloadSmartModel,
   mihomoHotReloadConfig,
   startMonitor,
   quitWithoutCore,
@@ -311,6 +300,7 @@ export const {
   getVersion,
   fetchMihomoTags,
   installSpecificMihomoCore,
+  upgradeMihomoCore,
   clearMihomoVersionCache,
   // Backup
   webdavBackup,
