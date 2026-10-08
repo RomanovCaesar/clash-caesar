@@ -1,5 +1,5 @@
 name: 功能请求
-description: '请求 clash-party 功能'
+description: '请求 Clash Caesar 功能'
 title: '[Feature] '
 body:
   - type: checkboxes
@@ -19,9 +19,7 @@ body:
       description: 请提供操作系统类型
       multiple: true
       options:
-        - MacOS
         - Windows
-        - Linux
     validations:
       required: true
   - type: textarea

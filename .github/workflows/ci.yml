@@ -4,7 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - smart_core
       - main
     paths-ignore:
       - 'README.md'
