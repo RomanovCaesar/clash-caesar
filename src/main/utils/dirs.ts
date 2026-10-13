@@ -122,16 +122,16 @@ export function pluginVaultPath(id: string): string {
   return path.join(pluginVaultDir(), `${id}.bin`)
 }
 
-export function overrideDir(): string {
-  return path.join(dataDir(), 'override')
+export function subTemplateDir(): string {
+  return path.join(dataDir(), 'sub-templates')
 }
 
-export function overrideConfigPath(): string {
-  return path.join(dataDir(), 'override.yaml')
+export function subTemplateConfigPath(): string {
+  return path.join(dataDir(), 'sub-templates.yaml')
 }
 
-export function overridePath(id: string, ext: 'js' | 'yaml' | 'log'): string {
-  return path.join(overrideDir(), `${id}.${ext}`)
+export function subTemplatePath(id: string): string {
+  return path.join(subTemplateDir(), `${id}.yaml`)
 }
 
 export function mihomoWorkDir(): string {

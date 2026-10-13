@@ -42,14 +42,14 @@ import {
   setProfileStr,
   updateProfileItem,
   setProfileConfig,
-  getOverrideConfig,
-  setOverrideConfig,
-  getOverrideItem,
-  addOverrideItem,
-  removeOverrideItem,
-  getOverride,
-  setOverride,
-  updateOverrideItem,
+  getSubTemplateConfig,
+  patchSubTemplateConfig,
+  getSubTemplateContent,
+  setSubTemplateContent,
+  importSubTemplate,
+  fetchSubTemplateUrl,
+  renameSubTemplate,
+  removeSubTemplate,
   convertMrsRuleset
 } from '../config'
 import {
@@ -111,6 +111,7 @@ import { registerShortcut } from '../resolve/shortcut'
 import { closeMainWindow, mainWindow, showMainWindow, triggerMainWindow } from '../window'
 import { subStoreCollections, subStoreSubs } from '../core/subStoreApi'
 import { exportGistAgeSecretKey, generateGistAgeKeyPair, getGistUrl } from '../resolve/gistApi'
+import { getNodeGeo, getNodeGeoStatus, refreshNodeGeo } from '../resolve/nodeGeo'
 import { startMonitor } from '../resolve/trafficMonitor'
 import { closeFloatingWindow, showContextMenu, showFloatingWindow } from '../resolve/floatingWindow'
 import { addProfileUpdater, removeProfileUpdater } from '../core/profileUpdater'
@@ -265,15 +266,15 @@ const asyncHandlers: Record<string, AsyncFn> = {
   changeCurrentProfile,
   addProfileUpdater,
   removeProfileUpdater,
-  // Override
-  getOverrideConfig,
-  setOverrideConfig,
-  getOverrideItem,
-  addOverrideItem,
-  removeOverrideItem,
-  updateOverrideItem,
-  getOverride,
-  setOverride,
+  // Subscription template
+  getSubTemplateConfig,
+  patchSubTemplateConfig,
+  getSubTemplateContent,
+  setSubTemplateContent,
+  importSubTemplate,
+  fetchSubTemplateUrl,
+  renameSubTemplate,
+  removeSubTemplate,
   // File
   getFileStr,
   setFileStr,
@@ -351,6 +352,9 @@ const asyncHandlers: Record<string, AsyncFn> = {
   exportGistAgeSecretKey,
   fetchIPInfo,
   measureLatency,
+  getNodeGeo,
+  getNodeGeoStatus,
+  refreshNodeGeo,
   getImageDataURL,
   readImageFileDataURL,
   getIconDataURL,

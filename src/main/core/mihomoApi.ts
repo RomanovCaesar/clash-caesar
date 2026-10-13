@@ -10,6 +10,7 @@ import { floatingWindow } from '../resolve/floatingWindow'
 import { recordTrafficUsage } from '../traffic/recorder'
 import { createLogger } from '../utils/logger'
 import { mihomoWorkConfigPath } from '../utils/dirs'
+import { isProbeGroupName, scheduleNodeGeoProbe } from '../resolve/nodeGeo'
 import { generateProfile, getRuntimeConfig } from './factory'
 import { syncControlDnsAfterApply } from './dnsOverrideGuard'
 import { getMihomoIpcPath, hasCoreProcess, restartCore } from './manager'
@@ -340,7 +341,9 @@ export const mihomoGroups = async (includeHidden = false): Promise<IMihomoMixedG
   )
   const groups: IMihomoMixedGroup[] = []
   rawGroups.forEach(({ group }) => {
+    // 节点出口位置的探测分组是隐藏的内部分组，GLOBAL 里也不显示
     const newAll = (group.all || [])
+      .filter((name) => !isProbeGroupName(name))
       .map((name) => proxies.proxies[name] || providerProxies[name])
       .filter((proxy): proxy is IMihomoProxy | IMihomoGroup => Boolean(proxy))
     groups.push({ ...group, all: newAll })
@@ -360,7 +363,8 @@ export const mihomoProxyProviders = async (): Promise<IMihomoProxyProviders> => 
 
 export const mihomoUpdateProxyProviders = async (name: string): Promise<void> => {
   const instance = await getAxios()
-  return await instance.put(`/providers/proxies/${encodeURIComponent(name)}`)
+  await instance.put(`/providers/proxies/${encodeURIComponent(name)}`)
+  scheduleNodeGeoProbe()
 }
 
 export const mihomoRuleProviders = async (): Promise<IMihomoRuleProviders> => {
@@ -456,6 +460,7 @@ export const mihomoHotReloadConfig = async (): Promise<void> => {
   } catch (error) {
     mihomoApiLogger.warn('Failed to schedule runtime config Gist sync', error)
   }
+  scheduleNodeGeoProbe()
 }
 
 export const startMihomoTraffic = async (): Promise<void> => {
@@ -615,6 +620,12 @@ const mihomoConnections = async (): Promise<void> => {
     connectionsStream.retry = MAX_RETRY
     try {
       const info = JSON.parse(data) as IMihomoConnectionsInfo
+      // 节点出口位置的探测请求不是用户流量，不进连接列表和流量统计
+      if (Array.isArray(info.connections)) {
+        info.connections = info.connections.filter(
+          (connection) => !isProbeGroupName(connection.metadata?.inboundName ?? '')
+        )
+      }
       recordTrafficUsage(info)
       if (__LEGACY_BUILD__ || mainWindow?.isVisible()) {
         mainWindow?.webContents.send('mihomoConnections', info)

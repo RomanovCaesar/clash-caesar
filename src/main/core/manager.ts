@@ -32,6 +32,7 @@ import { parseAgeSecretKeys } from '../utils/age'
 import i18next from '../../shared/i18n'
 import { managerLogger } from '../utils/logger'
 import { createCoreLogWritableStream } from '../utils/logFile'
+import { scheduleNodeGeoProbe } from '../resolve/nodeGeo'
 import {
   startMihomoTraffic,
   startMihomoConnections,
@@ -617,6 +618,7 @@ function setupCoreListeners(
     } catch (error) {
       managerLogger.warn('Failed to sync runtime config to Gist', error)
     }
+    scheduleNodeGeoProbe()
     await patchMihomoConfig({ 'log-level': logLevel })
   }
 

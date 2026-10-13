@@ -335,7 +335,6 @@ const Profiles: React.FC = () => {
             name: '',
             type: 'remote',
             url: '',
-            override: [],
             useProxy
           }}
           addProfileItem={addProfileItem}

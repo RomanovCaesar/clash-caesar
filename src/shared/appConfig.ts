@@ -27,7 +27,7 @@ export const DEFAULT_SIDER_ORDER: SiderCardKey[] = [
   'proxy',
   'rule',
   'resource',
-  'override',
+  'subTemplate',
   'connection',
   'mihomo',
   'dns',

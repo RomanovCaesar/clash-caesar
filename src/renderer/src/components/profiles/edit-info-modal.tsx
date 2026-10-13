@@ -9,23 +9,17 @@ import {
   Input,
   Switch,
   Select,
-  SelectItem,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
+  SelectItem
 } from '@heroui/react'
 import { toast } from '@renderer/components/base/toast'
 import React, { useState } from 'react'
-import { useOverrideConfig } from '@renderer/hooks/use-override-config'
+import { useSubTemplateConfig } from '@renderer/hooks/use-sub-template-config'
 import {
   mihomoHotReloadConfig,
   addProfileUpdater,
   getFilePath,
   readTextFile
 } from '@renderer/utils/ipc'
-import { MdDeleteForever } from 'react-icons/md'
-import { FaPlus } from 'react-icons/fa6'
 import { useTranslation } from 'react-i18next'
 import { isValidCron } from 'cron-validator'
 import SettingItem from '../base/base-setting-item'
@@ -39,8 +33,8 @@ interface Props {
 }
 const EditInfoModal: React.FC<Props> = (props) => {
   const { item, mode = 'edit', updateProfileItem, addProfileItem, onClose } = props
-  const { overrideConfig } = useOverrideConfig()
-  const { items: overrideItems = [] } = overrideConfig || {}
+  const { subTemplateConfig } = useSubTemplateConfig()
+  const { items: templateItems = [] } = subTemplateConfig || {}
   const [values, setValues] = useState({
     ...item
   })
@@ -52,13 +46,7 @@ const EditInfoModal: React.FC<Props> = (props) => {
 
   const onSave = async (): Promise<void> => {
     try {
-      const updatedItem = {
-        ...values,
-        override: values.override?.filter(
-          (i) =>
-            overrideItems.find((t) => t.id === i) && !overrideItems.find((t) => t.id === i)?.global
-        )
-      }
+      const updatedItem = { ...values }
       if (isImportMode) {
         if (!addProfileItem) throw new Error('Missing profile import handler')
         await addProfileItem(updatedItem)
@@ -304,67 +292,28 @@ const EditInfoModal: React.FC<Props> = (props) => {
               </SettingItem>
             </>
           )}
-          <SettingItem title={t('profiles.editInfo.override.title')}>
-            <div>
-              {overrideItems
-                .filter((i) => i.global)
-                .map((i) => {
-                  return (
-                    <div className="flex mb-2" key={i.id}>
-                      <Button disabled fullWidth variant="flat" size="sm">
-                        {i.name} ({t('profiles.editInfo.override.global')})
-                      </Button>
-                    </div>
-                  )
-                })}
-              {values.override?.map((i) => {
-                if (!overrideItems.find((t) => t.id === i)) return null
-                if (overrideItems.find((t) => t.id === i)?.global) return null
-                return (
-                  <div className="flex mb-2" key={i}>
-                    <Button disabled fullWidth variant="flat" size="sm">
-                      {overrideItems.find((t) => t.id === i)?.name}
-                    </Button>
-                    <Button
-                      color="warning"
-                      variant="flat"
-                      className="ml-2"
-                      size="sm"
-                      onPress={() => {
-                        setValues({
-                          ...values,
-                          override: values.override?.filter((t) => t !== i)
-                        })
-                      }}
-                    >
-                      <MdDeleteForever className="text-lg" />
-                    </Button>
-                  </div>
-                )
-              })}
-              <Dropdown>
-                <DropdownTrigger>
-                  <Button fullWidth size="sm" variant="flat" color="default">
-                    <FaPlus />
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu
-                  emptyContent={t('profiles.editInfo.override.noAvailable')}
-                  onAction={(key) => {
-                    setValues({
-                      ...values,
-                      override: Array.from(values.override || []).concat(key.toString())
-                    })
-                  }}
-                >
-                  {overrideItems
-                    .filter((i) => !values.override?.includes(i.id) && !i.global)
-                    .map((i) => (
-                      <DropdownItem key={i.id}>{i.name}</DropdownItem>
-                    ))}
-                </DropdownMenu>
-              </Dropdown>
-            </div>
+          <SettingItem title={t('profiles.editInfo.subTemplate.title')}>
+            <Select
+              classNames={{ trigger: 'data-[hover=true]:bg-default-200' }}
+              className="w-[200px]"
+              size="sm"
+              aria-label={t('profiles.editInfo.subTemplate.title')}
+              selectedKeys={new Set([values.subTemplate || 'follow'])}
+              disallowEmptySelection
+              onSelectionChange={(v) => {
+                const key = v.currentKey as string
+                setValues({ ...values, subTemplate: key === 'follow' ? undefined : key })
+              }}
+            >
+              {[
+                <SelectItem key="follow">
+                  {t('profiles.editInfo.subTemplate.followGlobal')}
+                </SelectItem>,
+                <SelectItem key="none">{t('profiles.editInfo.subTemplate.none')}</SelectItem>,
+                <SelectItem key="builtin">{t('subTemplate.builtin')}</SelectItem>,
+                ...templateItems.map((i) => <SelectItem key={i.id}>{i.name}</SelectItem>)
+              ]}
+            </Select>
           </SettingItem>
         </ModalBody>
         <ModalFooter>

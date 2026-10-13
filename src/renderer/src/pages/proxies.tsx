@@ -26,21 +26,89 @@ import {
   MdCheck,
   MdDoubleArrow,
   MdFilterAlt,
+  MdMap,
   MdOutlineSpeed,
+  MdPublic,
   MdVisibilityOff
 } from 'react-icons/md'
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { GroupedVirtuoso, GroupedVirtuosoHandle } from 'react-virtuoso'
 import ProxyItem from '@renderer/components/proxies/proxy-item'
-import { IoIosArrowBack } from 'react-icons/io'
+import { IoIosArrowBack, IoIosArrowDown } from 'react-icons/io'
 import { useGroups } from '@renderer/hooks/use-groups'
 import CollapseInput from '@renderer/components/base/collapse-input'
 import { includesIgnoreCase } from '@renderer/utils/includes'
 import { useControledMihomoConfig } from '@renderer/hooks/use-controled-mihomo-config'
 import { useTranslation } from 'react-i18next'
 import { HiOutlineAdjustmentsHorizontal } from 'react-icons/hi2'
+import NodeMap from '@renderer/components/proxies/node-map'
+import { useNodeGeo } from '@renderer/hooks/use-node-geo'
+import {
+  countryOfRegion,
+  isNodeMember,
+  regionKeyOf,
+  regionLabel,
+  UNKNOWN_REGION
+} from '@renderer/utils/node-geo'
 
 const GROUP_EXPAND_STATE_KEY = 'proxy_group_expand_state'
+const REGION_EXPAND_STATE_KEY = 'proxy_region_expand_state'
+// 页面宽度不足时不显示节点地图
+const NODE_MAP_MIN_PAGE_WIDTH = 860
+// 节点列表占页面宽度的比例（可拖动分隔条调整），默认给地图留出大部分空间
+const LIST_RATIO_KEY = 'proxy_list_ratio'
+const DEFAULT_LIST_RATIO = 0.2
+const MIN_LIST_WIDTH = 260
+const MIN_MAP_WIDTH = 320
+
+const loadListRatio = (): number => {
+  try {
+    const value = Number(localStorage.getItem(LIST_RATIO_KEY))
+    return value > 0 && value < 1 ? value : DEFAULT_LIST_RATIO
+  } catch {
+    return DEFAULT_LIST_RATIO
+  }
+}
+
+const clampListRatio = (ratio: number, pageWidth: number): number => {
+  if (pageWidth <= 0) return ratio
+  const min = MIN_LIST_WIDTH / pageWidth
+  const max = 1 - MIN_MAP_WIDTH / pageWidth
+  return Math.min(Math.max(ratio, min), Math.max(min, max))
+}
+
+type ProxyLike = IMihomoProxy | IMihomoGroup
+
+// 分组展开后的每一行：区域标题，或一行节点卡片
+type ProxyRow =
+  | { kind: 'region'; region: string; count: number; open: boolean; current: boolean }
+  | { kind: 'proxies'; items: ProxyLike[] }
+
+type RegionExpandState = Record<string, Record<string, boolean>>
+
+const loadRegionExpandState = (): RegionExpandState => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(REGION_EXPAND_STATE_KEY) || '{}')
+    return typeof parsed === 'object' && parsed !== null ? (parsed as RegionExpandState) : {}
+  } catch {
+    return {}
+  }
+}
+
+const chunk = <T,>(items: T[], size: number): T[][] => {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size))
+  return rows
+}
+
+// 列数按列表区域的实际宽度计算（地图占用了一部分页面宽度）
+const autoColsForWidth = (width: number): number => {
+  if (width >= 1290) return 5
+  if (width >= 1030) return 4
+  if (width >= 770) return 3
+  if (width >= 380) return 2
+  return 1
+}
 const EMPTY_GROUPS: IMihomoMixedGroup[] = []
 
 interface GroupExpandState {
@@ -143,7 +211,7 @@ const useProxyState = (
 }
 
 const Proxies: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { controledMihomoConfig } = useControledMihomoConfig()
   const { mode = 'rule' } = controledMihomoConfig || {}
   const { groups: groupData, mutate, showHidden, setShowHidden } = useGroups()
@@ -154,8 +222,76 @@ const Proxies: React.FC = () => {
     proxyDisplayOrder = 'default',
     autoCloseConnection = true,
     proxyCols = 'auto',
-    delayTestConcurrency = 50
+    delayTestConcurrency = 50,
+    showNodeMap = true,
+    groupProxiesByCountry = true
   } = appConfig || {}
+  const { geo, status: geoStatus } = useNodeGeo()
+  const [regionOpen, setRegionOpen] = useState<RegionExpandState>(loadRegionExpandState)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [pageWidth, setPageWidth] = useState(0)
+  const [listRatio, setListRatio] = useState(loadListRatio)
+  const [resizing, setResizing] = useState(false)
+
+  const saveListRatio = (ratio: number): void => {
+    try {
+      localStorage.setItem(LIST_RATIO_KEY, String(ratio))
+    } catch {
+      // ignore
+    }
+  }
+
+  // 拖动列表与地图之间的分隔条调整两者宽度
+  const onDividerPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
+    const page = pageRef.current
+    if (!page) return
+    event.preventDefault()
+    const rect = page.getBoundingClientRect()
+    let latest = listRatio
+    setResizing(true)
+    const onMove = (e: PointerEvent): void => {
+      latest = clampListRatio((e.clientX - rect.left) / rect.width, rect.width)
+      setListRatio(latest)
+    }
+    const onUp = (): void => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      setResizing(false)
+      saveListRatio(latest)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  const [listWidth, setListWidth] = useState(0)
+  // 地图点击或定位后待滚动到的行
+  const [pendingScroll, setPendingScroll] = useState<{
+    group: string
+    proxy?: string
+    region?: string
+  }>()
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REGION_EXPAND_STATE_KEY, JSON.stringify(regionOpen))
+    } catch {
+      // ignore
+    }
+  }, [regionOpen])
+
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.target === pageRef.current) setPageWidth(entry.contentRect.width)
+        if (entry.target === listRef.current) setListWidth(entry.contentRect.width)
+      })
+    })
+    if (pageRef.current) observer.observe(pageRef.current)
+    if (listRef.current) observer.observe(listRef.current)
+    return (): void => observer.disconnect()
+  }, [mode])
+
+  const mapVisible = showNodeMap && pageWidth >= NODE_MAP_MIN_PAGE_WIDTH
 
   const [cols, setCols] = useState(1)
   const { virtuosoRef, isOpen, setIsOpen } = useProxyState(groupData)
@@ -197,9 +333,8 @@ const Proxies: React.FC = () => {
     return proxies
   }, [])
 
-  const { groupCounts, allProxies } = useMemo(() => {
-    const groupCounts: number[] = []
-    const allProxies: (IMihomoProxy | IMihomoGroup)[][] = []
+  const { groupCounts, allProxies, groupRows } = useMemo(() => {
+    const allProxies: ProxyLike[][] = []
 
     groups.forEach((group, index) => {
       if (isOpen[index]) {
@@ -224,15 +359,49 @@ const Proxies: React.FC = () => {
           return true
         })
         const sorted = sortProxies(filtered, proxyDisplayOrder)
-        const count = Math.ceil(sorted.length / cols)
-        groupCounts.push(count)
         allProxies.push(sorted)
       } else {
-        groupCounts.push(0)
         allProxies.push([])
       }
     })
-    return { groupCounts, allProxies }
+
+    // 每个展开的分组拆成若干行：子分组 / DIRECT 等非节点成员在前；节点按出口区域归类，
+    // 每个区域一个可折叠的标题行（区域顺序按列表中首次出现的位置，保留用户选的排序）
+    const groupRows: ProxyRow[][] = allProxies.map((proxies, index) => {
+      if (!isOpen[index]) return []
+      const group = groups[index]
+      const members = proxies.filter((p) => !isNodeMember(p))
+      const nodes = proxies.filter(isNodeMember)
+      const byRegion = new Map<string, ProxyLike[]>()
+      nodes.forEach((p) => {
+        const key = regionKeyOf(geo[p.name])
+        byRegion.set(key, [...(byRegion.get(key) ?? []), p])
+      })
+      const onlyUnknown = byRegion.size === 1 && byRegion.has(UNKNOWN_REGION)
+      if (!groupProxiesByCountry || byRegion.size === 0 || onlyUnknown) {
+        return chunk(proxies, cols).map((items) => ({ kind: 'proxies' as const, items }))
+      }
+      const rows: ProxyRow[] = chunk(members, cols).map((items) => ({
+        kind: 'proxies' as const,
+        items
+      }))
+      const regionKeys = [...byRegion.keys()].sort(
+        (a, b) => Number(a === UNKNOWN_REGION) - Number(b === UNKNOWN_REGION)
+      )
+      const searching = Boolean(searchValue[index])
+      regionKeys.forEach((region) => {
+        const items = byRegion.get(region) ?? []
+        const current = items.some((p) => p.name === group.now)
+        const open = searching || (regionOpen[group.name]?.[region] ?? current)
+        rows.push({ kind: 'region', region, count: items.length, open, current })
+        if (open) {
+          chunk(items, cols).forEach((row) => rows.push({ kind: 'proxies', items: row }))
+        }
+      })
+      return rows
+    })
+    const groupCounts = groupRows.map((rows) => rows.length)
+    return { groupCounts, allProxies, groupRows }
   }, [
     groups,
     isOpen,
@@ -240,7 +409,10 @@ const Proxies: React.FC = () => {
     cols,
     searchValue,
     sortProxies,
-    appConfig?.hideUnavailableProxies
+    appConfig?.hideUnavailableProxies,
+    geo,
+    groupProxiesByCountry,
+    regionOpen
   ])
 
   const onChangeProxy = useCallback(
@@ -415,11 +587,8 @@ const Proxies: React.FC = () => {
     if (proxyCols !== 'auto') {
       return parseInt(proxyCols)
     }
-    if (window.matchMedia('(min-width: 1536px)').matches) return 5
-    if (window.matchMedia('(min-width: 1280px)').matches) return 4
-    if (window.matchMedia('(min-width: 1024px)').matches) return 3
-    return 2
-  }, [proxyCols])
+    return autoColsForWidth(listWidth)
+  }, [proxyCols, listWidth])
 
   useEffect(() => {
     const handleResize = (): void => {
@@ -433,6 +602,42 @@ const Proxies: React.FC = () => {
       window.removeEventListener('resize', handleResize)
     }
   }, [calcCols])
+
+  const toggleRegion = useCallback((group: string, region: string, open: boolean): void => {
+    setRegionOpen((prev) => ({ ...prev, [group]: { ...prev[group], [region]: open } }))
+  }, [])
+
+  // 打开分组和区域后，等行重新计算完再滚动过去
+  useEffect(() => {
+    if (!pendingScroll) return
+    const groupIndex = groups.findIndex((g) => g.name === pendingScroll.group)
+    if (groupIndex === -1 || !isOpen[groupIndex]) return
+    const rows = groupRows[groupIndex] ?? []
+    const rowIndex = rows.findIndex((row) =>
+      pendingScroll.proxy
+        ? row.kind === 'proxies' && row.items.some((p) => p.name === pendingScroll.proxy)
+        : row.kind === 'region' && row.region === pendingScroll.region
+    )
+    if (rowIndex === -1) return
+    const offset = groupCounts.slice(0, groupIndex).reduce((sum, n) => sum + n, 0)
+    virtuosoRef.current?.scrollToIndex({ index: offset + rowIndex, align: 'start' })
+    setPendingScroll(undefined)
+  }, [pendingScroll, groups, isOpen, groupRows, groupCounts, virtuosoRef])
+
+  const revealRegion = useCallback(
+    (groupName: string, region: string): void => {
+      const index = groups.findIndex((g) => g.name === groupName)
+      if (index === -1) return
+      setIsOpen((prev) => {
+        const next = [...prev]
+        next[index] = true
+        return next
+      })
+      toggleRegion(groupName, region, true)
+      setPendingScroll({ group: groupName, region })
+    },
+    [groups, setIsOpen, toggleRegion]
+  )
 
   const renderGroupContent = useCallback(
     (index: number) => {
@@ -539,18 +744,9 @@ const Proxies: React.FC = () => {
                             return newOpen
                           })
                         }
-                        let i = 0
-                        for (let j = 0; j < index; j++) {
-                          i += groupCounts[j]
-                        }
-                        i += Math.floor(
-                          allProxies[index].findIndex((proxy) => proxy.name === groups[index].now) /
-                            cols
-                        )
-                        virtuosoRef.current?.scrollToIndex({
-                          index: Math.floor(i),
-                          align: 'start'
-                        })
+                        const now = groups[index].now
+                        toggleRegion(groups[index].name, regionKeyOf(geo[now]), true)
+                        setPendingScroll({ group: groups[index].name, proxy: now })
                       }}
                     >
                       <FaLocationCrosshairs className="text-lg text-foreground-500" />
@@ -591,9 +787,10 @@ const Proxies: React.FC = () => {
       mutate,
       setIsOpen,
       allProxies,
-      cols,
-      virtuosoRef,
-      onGroupDelay
+      onGroupDelay,
+      toggleRegion,
+      geo,
+      virtuosoRef
     ]
   )
 
@@ -603,52 +800,69 @@ const Proxies: React.FC = () => {
       groupCounts.slice(0, groupIndex).forEach((count) => {
         innerIndex -= count
       })
-      return allProxies[groupIndex] ? (
-        <div
-          style={
-            proxyCols !== 'auto'
-              ? { gridTemplateColumns: `repeat(${proxyCols}, minmax(0, 1fr))` }
-              : {}
-          }
-          className={`grid ${proxyCols === 'auto' ? 'sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : ''} ${groupIndex === groupCounts.length - 1 && innerIndex === groupCounts[groupIndex] - 1 ? 'pb-2' : ''} gap-2 pt-2 mx-2`}
-        >
-          {Array.from({ length: cols }).map((_, i) => {
-            if (!allProxies[groupIndex][innerIndex * cols + i]) return null
-            return (
-              <ProxyItem
-                key={allProxies[groupIndex][innerIndex * cols + i].name}
-                mutateProxies={mutate}
-                onProxyDelay={onProxyDelay}
-                onSelect={onChangeProxy}
-                proxy={allProxies[groupIndex][innerIndex * cols + i]}
-                group={groups[groupIndex]}
-                proxyDisplayMode={proxyDisplayMode}
-                selected={
-                  allProxies[groupIndex][innerIndex * cols + i]?.name === groups[groupIndex].now
-                }
-                isGroupTesting={
-                  delaying[groupIndex]?.has(allProxies[groupIndex][innerIndex * cols + i].name) ??
-                  false
-                }
+      const row = groupRows[groupIndex]?.[innerIndex]
+      if (!row) return <div>Never See This</div>
+      const isLast =
+        groupIndex === groupCounts.length - 1 && innerIndex === groupCounts[groupIndex] - 1
+      const group = groups[groupIndex]
+      if (row.kind === 'region') {
+        return (
+          <div className={`px-2 pt-2 ${isLast ? 'pb-2' : ''}`}>
+            <button
+              className="w-full flex items-center gap-2 rounded-lg px-3 h-9 text-left hover:bg-default-100 transition-colors"
+              onClick={() => toggleRegion(group.name, row.region, !row.open)}
+            >
+              {row.region === UNKNOWN_REGION ? (
+                <MdPublic className="text-lg text-foreground-400" />
+              ) : (
+                <span className={`fi fi-${countryOfRegion(row.region).toLowerCase()} rounded-sm`} />
+              )}
+              <span className="font-semibold text-sm">
+                {regionLabel(row.region, i18n.language, t('proxies.map.unknownRegion'))}
+              </span>
+              <span className="text-xs text-foreground-400">{row.count}</span>
+              {row.current && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+              <IoIosArrowDown
+                className={`ml-auto text-foreground-400 transition-transform ${row.open ? 'rotate-180' : ''}`}
               />
-            )
-          })}
+            </button>
+          </div>
+        )
+      }
+      return (
+        <div
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          className={`grid ${isLast ? 'pb-2' : ''} gap-2 pt-2 mx-2`}
+        >
+          {row.items.map((proxy) => (
+            <ProxyItem
+              key={proxy.name}
+              mutateProxies={mutate}
+              onProxyDelay={onProxyDelay}
+              onSelect={onChangeProxy}
+              proxy={proxy}
+              group={group}
+              proxyDisplayMode={proxyDisplayMode}
+              selected={proxy.name === group.now}
+              isGroupTesting={delaying[groupIndex]?.has(proxy.name) ?? false}
+            />
+          ))}
         </div>
-      ) : (
-        <div>Never See This</div>
       )
     },
     [
       groupCounts,
-      allProxies,
-      proxyCols,
+      groupRows,
       cols,
       groups,
       proxyDisplayMode,
       delaying,
       mutate,
       onProxyDelay,
-      onChangeProxy
+      onChangeProxy,
+      toggleRegion,
+      i18n.language,
+      t
     ]
   )
 
@@ -695,6 +909,12 @@ const Proxies: React.FC = () => {
                   break
                 case 'mode-full':
                   void patchAppConfig({ proxyDisplayMode: 'full' })
+                  break
+                case 'show-map':
+                  void patchAppConfig({ showNodeMap: !showNodeMap })
+                  break
+                case 'group-country':
+                  void patchAppConfig({ groupProxiesByCountry: !groupProxiesByCountry })
                   break
               }
             }}
@@ -756,6 +976,24 @@ const Proxies: React.FC = () => {
                 {t('proxies.order.name')}
               </DropdownItem>
             </DropdownSection>
+            <DropdownSection title={t('proxies.settings.map')} showDivider>
+              <DropdownItem
+                key="show-map"
+                startContent={<MdMap className="text-lg" />}
+                endContent={showNodeMap ? <MdCheck className="text-lg text-primary" /> : null}
+              >
+                {t('proxies.map.show')}
+              </DropdownItem>
+              <DropdownItem
+                key="group-country"
+                startContent={<MdPublic className="text-lg" />}
+                endContent={
+                  groupProxiesByCountry ? <MdCheck className="text-lg text-primary" /> : null
+                }
+              >
+                {t('proxies.map.groupByCountry')}
+              </DropdownItem>
+            </DropdownSection>
             <DropdownSection title={t('proxies.settings.mode')}>
               <DropdownItem
                 key="mode-simple"
@@ -790,19 +1028,57 @@ const Proxies: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="h-[calc(100vh-50px)]">
-          {/* Reset Virtuoso's measured sizes after toggling unavailable proxy filtering. */}
-          <GroupedVirtuoso
-            key={appConfig?.hideUnavailableProxies ? 'hide-unavailable' : 'show-unavailable'}
-            ref={virtuosoRef}
-            groupCounts={groupCounts}
-            defaultItemHeight={80}
-            increaseViewportBy={{ top: 150, bottom: 150 }}
-            overscan={200}
-            computeItemKey={(index, groupIndex) => `${groupIndex}-${index}`}
-            groupContent={renderGroupContent}
-            itemContent={renderItemContent}
-          />
+        <div ref={pageRef} className="h-[calc(100vh-50px)] flex">
+          <div
+            ref={listRef}
+            className={`h-full min-w-0 ${mapVisible ? 'shrink-0' : 'flex-1'}`}
+            style={
+              mapVisible ? { width: `${clampListRatio(listRatio, pageWidth) * 100}%` } : undefined
+            }
+          >
+            {/* Reset Virtuoso's measured sizes after toggling unavailable proxy filtering. */}
+            <GroupedVirtuoso
+              key={appConfig?.hideUnavailableProxies ? 'hide-unavailable' : 'show-unavailable'}
+              ref={virtuosoRef}
+              groupCounts={groupCounts}
+              defaultItemHeight={80}
+              increaseViewportBy={{ top: 150, bottom: 150 }}
+              overscan={200}
+              computeItemKey={(index, groupIndex) => `${groupIndex}-${index}`}
+              groupContent={renderGroupContent}
+              itemContent={renderItemContent}
+            />
+          </div>
+          {mapVisible && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              title={t('proxies.map.resize')}
+              className="group h-full w-2 shrink-0 cursor-col-resize flex justify-center"
+              onPointerDown={onDividerPointerDown}
+              onDoubleClick={() => {
+                setListRatio(DEFAULT_LIST_RATIO)
+                saveListRatio(DEFAULT_LIST_RATIO)
+              }}
+            >
+              <div
+                className={`h-full w-0.5 rounded-full transition-colors ${resizing ? 'bg-primary' : 'bg-default-200 group-hover:bg-primary/60'}`}
+              />
+            </div>
+          )}
+          {mapVisible && (
+            <div
+              className={`h-full flex-1 min-w-0 ${resizing ? 'pointer-events-none select-none' : ''}`}
+            >
+              <NodeMap
+                groups={groups}
+                geo={geo}
+                status={geoStatus}
+                onSelect={onChangeProxy}
+                onRevealRegion={revealRegion}
+              />
+            </div>
+          )}
         </div>
       )}
     </BasePage>

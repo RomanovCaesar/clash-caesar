@@ -1,24 +1,29 @@
-import { Button, Card, CardBody, CardFooter, Tooltip } from '@heroui/react'
-import React from 'react'
-import { MdFormatOverline } from 'react-icons/md'
+import { Button, Card, CardBody, CardFooter, Spinner, Tooltip } from '@heroui/react'
+import BorderSwitch from '@renderer/components/base/border-switch'
+import React, { useState } from 'react'
+import { LuLayoutTemplate } from 'react-icons/lu'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
+import { useSubTemplateConfig } from '@renderer/hooks/use-sub-template-config'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
   iconOnly?: boolean
 }
 
-const OverrideCard: React.FC<Props> = (props) => {
+const SubTemplateCard: React.FC<Props> = (props) => {
   const { t } = useTranslation()
   const { appConfig } = useAppConfig()
+  const { subTemplateConfig, patchSubTemplateConfig } = useSubTemplateConfig()
   const { iconOnly } = props
-  const { overrideCardStatus = 'col-span-1', disableAnimations = false } = appConfig || {}
+  const { subTemplateCardStatus = 'col-span-1', disableAnimations = false } = appConfig || {}
+  const { enabled = false } = subTemplateConfig || {}
+  const [applying, setApplying] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const match = location.pathname.includes('/override')
+  const match = location.pathname.includes('/sub-template')
   const {
     attributes,
     listeners,
@@ -27,28 +32,40 @@ const OverrideCard: React.FC<Props> = (props) => {
     transition,
     isDragging
   } = useSortable({
-    id: 'override'
+    id: 'subTemplate'
   })
   const transform = tf ? { x: tf.x, y: tf.y, scaleX: 1, scaleY: 1 } : null
+
+  const onChange = async (value: boolean): Promise<void> => {
+    if (applying) return
+    setApplying(true)
+    try {
+      await patchSubTemplateConfig({ enabled: value })
+    } finally {
+      setApplying(false)
+    }
+  }
+
   if (iconOnly) {
     return (
-      <div className={`${overrideCardStatus} flex justify-center`}>
-        <Tooltip content={t('sider.cards.override')} placement="right">
+      <div className={`${subTemplateCardStatus} flex justify-center`}>
+        <Tooltip content={t('sider.cards.subTemplate')} placement="right">
           <Button
             size="sm"
             isIconOnly
             color={match ? 'primary' : 'default'}
             variant={match ? 'solid' : 'light'}
             onPress={() => {
-              navigate('/override')
+              navigate('/sub-template')
             }}
           >
-            <MdFormatOverline className="text-[20px]" />
+            <LuLayoutTemplate className="text-[20px]" />
           </Button>
         </Tooltip>
       </div>
     )
   }
+
   return (
     <div
       style={{
@@ -57,7 +74,7 @@ const OverrideCard: React.FC<Props> = (props) => {
         transition,
         zIndex: isDragging ? 'calc(infinity)' : undefined
       }}
-      className={`${overrideCardStatus} override-card`}
+      className={`${subTemplateCardStatus} sub-template-card`}
     >
       <Card
         fullWidth
@@ -74,18 +91,26 @@ const OverrideCard: React.FC<Props> = (props) => {
               variant="flat"
               color="default"
             >
-              <MdFormatOverline
-                color="default"
+              <LuLayoutTemplate
                 className={`${match ? 'text-primary-foreground' : 'text-foreground'} text-[24px]`}
               />
             </Button>
+            <div className="flex items-center">
+              {applying && <Spinner size="sm" color={match ? 'white' : 'primary'} />}
+              <BorderSwitch
+                isShowBorder={match && enabled}
+                isSelected={enabled}
+                isDisabled={applying || !subTemplateConfig}
+                onValueChange={onChange}
+              />
+            </div>
           </div>
         </CardBody>
         <CardFooter className="pt-1">
           <h3
-            className={`text-md font-bold text-ellipsis whitespace-nowrap overflow-hidden ${match ? 'text-primary-foreground' : 'text-foreground'}`}
+            className={`text-md font-bold sider-card-title ${match ? 'text-primary-foreground' : 'text-foreground'}`}
           >
-            {t('sider.cards.override')}
+            {t('sider.cards.subTemplate')}
           </h3>
         </CardFooter>
       </Card>
@@ -93,4 +118,4 @@ const OverrideCard: React.FC<Props> = (props) => {
   )
 }
 
-export default OverrideCard
+export default SubTemplateCard

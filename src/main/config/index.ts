@@ -18,13 +18,12 @@ export {
   convertMrsRuleset
 } from './profile'
 export {
-  getOverrideConfig,
-  setOverrideConfig,
-  getOverrideItem,
-  addOverrideItem,
-  removeOverrideItem,
-  createOverride,
-  getOverride,
-  setOverride,
-  updateOverrideItem
-} from './override'
+  getSubTemplateConfig,
+  patchSubTemplateConfig,
+  getSubTemplateContent,
+  setSubTemplateContent,
+  importSubTemplate,
+  fetchSubTemplateUrl,
+  renameSubTemplate,
+  removeSubTemplate
+} from './subTemplate'

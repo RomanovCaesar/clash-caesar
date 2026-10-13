@@ -15,10 +15,8 @@ import { triggerSysProxy } from '../sys/sysproxy'
 import {
   getAppConfig,
   getControledMihomoConfig,
-  getOverrideItem,
   patchAppConfig,
-  patchControledMihomoConfig,
-  removeOverrideItem
+  patchControledMihomoConfig
 } from '../config'
 import { startSSIDCheck } from '../sys/ssid'
 import { initResumeRecovery } from '../sys/resume'
@@ -32,7 +30,7 @@ import { stringify } from './yaml'
 import {
   defaultConfig,
   defaultControledMihomoConfig,
-  defaultOverrideConfig,
+  defaultSubTemplateConfig,
   defaultProfile,
   defaultProfileConfig
 } from './template'
@@ -43,8 +41,8 @@ import {
   logDir,
   mihomoTestDir,
   mihomoWorkDir,
-  overrideConfigPath,
-  overrideDir,
+  subTemplateConfigPath,
+  subTemplateDir,
   profileConfigPath,
   profilePath,
   profilesDir,
@@ -118,7 +116,7 @@ async function initDirs(): Promise<void> {
   const dirsToCreate = [
     dataDir(),
     profilesDir(),
-    overrideDir(),
+    subTemplateDir(),
     rulesDir(),
     mihomoWorkDir(),
     logDir(),
@@ -139,7 +137,11 @@ async function initConfig(): Promise<void> {
   const configs = [
     { path: appConfigPath(), content: defaultConfig, name: 'app config' },
     { path: profileConfigPath(), content: defaultProfileConfig, name: 'profile config' },
-    { path: overrideConfigPath(), content: defaultOverrideConfig, name: 'override config' },
+    {
+      path: subTemplateConfigPath(),
+      content: defaultSubTemplateConfig,
+      name: 'subscription template config'
+    },
     { path: profilePath('default'), content: defaultProfile, name: 'default profile' },
     {
       path: controledMihomoConfigPath(),
@@ -327,11 +329,23 @@ async function migrateSubStoreFiles(): Promise<void> {
   }
 }
 
-// 迁移：添加 substore 到侧边栏
+// 迁移：添加 substore 到侧边栏；覆写卡片已由订阅模版卡片取代
 async function migrateSiderOrder(): Promise<void> {
-  const { siderOrder = [], useSubStore = true } = await getAppConfig()
+  const appConfig = (await getAppConfig()) as IAppConfig & Record<string, unknown>
+  const { useSubStore = true } = appConfig
+  const original = (appConfig.siderOrder ?? []) as string[]
+  let siderOrder = original.map((key) => (key === 'override' ? 'subTemplate' : key))
   if (useSubStore && !siderOrder.includes('substore')) {
-    await patchAppConfig({ siderOrder: [...siderOrder, 'substore'] })
+    siderOrder = [...siderOrder, 'substore']
+  }
+  const patch: Record<string, unknown> = {}
+  if (siderOrder.join() !== original.join()) patch.siderOrder = siderOrder
+  if ('overrideCardStatus' in appConfig) {
+    patch.subTemplateCardStatus = appConfig.subTemplateCardStatus ?? appConfig.overrideCardStatus
+    patch.overrideCardStatus = undefined
+  }
+  if (Object.keys(patch).length > 0) {
+    await patchAppConfig(patch as Partial<IAppConfig>)
   }
 }
 
@@ -411,7 +425,6 @@ async function migrateMihomoConfig(): Promise<void> {
 }
 
 // 迁移：清理已移除功能（Smart 内核、GitHub 下载代理、自定义主题）留下的配置
-const LEGACY_SMART_OVERRIDE_ID = 'smart-core-override'
 const LEGACY_APP_KEYS = [
   'enableSmartCore',
   'enableSmartOverride',
@@ -441,10 +454,6 @@ async function migrateRemovedFeatures(): Promise<void> {
   }
   if (Object.keys(mihomoPatch).length > 0) {
     await patchControledMihomoConfig(mihomoPatch as Partial<IMihomoConfig>)
-  }
-
-  if (await getOverrideItem(LEGACY_SMART_OVERRIDE_ID)) {
-    await removeOverrideItem(LEGACY_SMART_OVERRIDE_ID)
   }
 }
 

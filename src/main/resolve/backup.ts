@@ -11,8 +11,8 @@ import {
   appConfigPath,
   controledMihomoConfigPath,
   dataDir,
-  overrideConfigPath,
-  overrideDir,
+  subTemplateConfigPath,
+  subTemplateDir,
   profileConfigPath,
   profilesDir,
   rulesDir,
@@ -90,12 +90,12 @@ function createBackupZip(): AdmZip {
     appConfigPath(),
     controledMihomoConfigPath(),
     profileConfigPath(),
-    overrideConfigPath()
+    subTemplateConfigPath()
   ]
 
   const folders = [
     { path: profilesDir(), name: 'profiles' },
-    { path: overrideDir(), name: 'override' },
+    { path: subTemplateDir(), name: 'sub-templates' },
     { path: rulesDir(), name: 'rules' },
     { path: subStoreDir(), name: 'substore' }
   ]

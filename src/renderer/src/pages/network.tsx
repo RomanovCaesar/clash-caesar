@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchIPInfo, measureLatency } from '@renderer/utils/ipc'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { DEFAULT_NETWORK_INFO_CARD_ORDER } from '../../../shared/appConfig'
+import { maskIp } from '../../../shared/nodeGeo'
 
 type IPProvider = 'ip.sb' | 'ipwho.is' | 'ipapi.is'
 
@@ -270,6 +271,8 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, mono }) => (
 const IPPage: React.FC = () => {
   const { t } = useTranslation()
   const { appConfig, patchAppConfig } = useAppConfig()
+  // 隐私设置：出口 IP 只显示前两段
+  const hideExitIp = appConfig?.hideExitIp ?? true
   const [provider, setProvider] = useState<IPProvider>(
     (appConfig?.networkIPProvider as IPProvider) ?? 'ip.sb'
   )
@@ -567,7 +570,7 @@ const IPPage: React.FC = () => {
                         </span>
                         <div className="flex items-center gap-1.5">
                           <span className="overflow-hidden text-right font-mono text-[13px] font-semibold text-primary text-ellipsis whitespace-nowrap">
-                            {hidden ? '••••••••••••••' : ipInfo.ip}
+                            {hidden ? '••••••••••••••' : hideExitIp ? maskIp(ipInfo.ip) : ipInfo.ip}
                           </span>
                           <button
                             onClick={() => setHidden((h) => !h)}

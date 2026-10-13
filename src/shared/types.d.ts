@@ -9,7 +9,7 @@ type SiderCardKey =
   | 'proxy'
   | 'rule'
   | 'resource'
-  | 'override'
+  | 'subTemplate'
   | 'connection'
   | 'mihomo'
   | 'dns'
@@ -274,9 +274,41 @@ interface ITrayTrafficStyle {
   textColor: string
 }
 
+// 节点出口位置（按节点名缓存）
+interface INodeGeo {
+  // 查询时节点的服务器地址；地址变化后缓存作废
+  server: string
+  ip?: string
+  // ISO 3166 二字母国家码，查询失败时为空串
+  country: string
+  // 中国大陆节点的省级行政区
+  region?: string
+  org?: string
+  updated: number
+  error?: string
+}
+
+interface INodeGeoStatus {
+  running: boolean
+  done: number
+  total: number
+}
+
 interface IAppConfig {
   core: 'mihomo' | 'mihomo-alpha' | 'mihomo-specific'
   specificVersion?: string
+  // 自动查询节点出口位置，默认开启
+  nodeGeoEnabled?: boolean
+  // 可选的 ipinfo.io token，填写后提高查询额度
+  ipinfoToken?: string
+  // 出口 IP 只显示前两段，默认开启
+  hideExitIp?: boolean
+  // 节点地图点击时操作的 select 分组
+  nodeMapGroup?: string
+  // 代理组页是否显示节点地图，默认显示
+  showNodeMap?: boolean
+  // 代理组内的节点按出口国家分组显示，默认开启
+  groupProxiesByCountry?: boolean
   proxyDisplayMode: 'simple' | 'full'
   proxyDisplayOrder: 'default' | 'delay' | 'name'
   profileDisplayDate?: 'expire' | 'update'
@@ -308,7 +340,7 @@ interface IAppConfig {
   ssidProfileMap?: Record<string, string>
   ssidProfileRestore?: boolean
   mihomoCoreCardStatus?: CardStatus
-  overrideCardStatus?: CardStatus
+  subTemplateCardStatus?: CardStatus
   profileCardStatus?: CardStatus
   proxyCardStatus?: CardStatus
   networkCardStatus?: CardStatus
@@ -552,19 +584,33 @@ interface IProfileConfig {
   items: IProfileItem[]
 }
 
-interface IOverrideItem {
+type SubTemplateVariant = 'cn' | 'ru' | 'ir'
+
+interface ISubTemplateItem {
   id: string
-  type: 'remote' | 'local'
-  ext: 'js' | 'yaml'
   name: string
   updated: number
-  global?: boolean
-  url?: string
-  file?: string
 }
 
-interface IOverrideConfig {
-  items: IOverrideItem[]
+interface ISubTemplateConfig {
+  // 订阅模版总开关，默认关闭
+  enabled: boolean
+  // 所有订阅默认使用的模版：'builtin'、某个导入模版的 id，或 '' 表示不使用
+  global: string
+  // 内置模版的地区变体
+  variant: SubTemplateVariant
+  // 除分组和分流规则外，是否也用模版里的其它设置覆盖订阅
+  overrideSettings: boolean
+  items: ISubTemplateItem[]
+}
+
+interface ISubTemplateStats {
+  removedProxies: number
+  removedProviders: number
+  nodeGroups: number
+  groups: number
+  rules: number
+  retargetedRules: number
 }
 
 interface ISubscriptionUserInfo {
@@ -583,7 +629,8 @@ interface IProfileItem {
   interval?: number | string
   home?: string
   updated?: number
-  override?: string[]
+  // 本订阅使用的模版：未设置表示跟随全局，'none' 表示不使用，否则为模版 id
+  subTemplate?: string
   useProxy?: boolean
   extra?: ISubscriptionUserInfo
   substore?: boolean

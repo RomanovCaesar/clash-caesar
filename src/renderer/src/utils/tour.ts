@@ -144,10 +144,10 @@ export function createTourDriver(t: TFunction, navigate: NavigateFunction): void
         }
       },
       {
-        element: '.override-card',
+        element: '.sub-template-card',
         popover: {
-          title: t('guide.override.title'),
-          description: t('guide.override.description'),
+          title: t('guide.subTemplate.title'),
+          description: t('guide.subTemplate.description'),
           side: 'right',
           align: 'center'
         }

@@ -113,7 +113,6 @@ export const ipcLogger = createLogger('ipc')
 export const proxyLogger = createLogger('sysproxy')
 export const managerLogger = createLogger('manager')
 export const factoryLogger = createLogger('factory')
-export const overrideLogger = createLogger('override')
 
 // 默认日志实例
 export const logger = appLogger

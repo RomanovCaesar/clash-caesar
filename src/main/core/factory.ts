@@ -1,30 +1,21 @@
 import { copyFile, mkdir, readFile, stat } from 'fs/promises'
-import vm from 'vm'
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync } from 'fs'
 import path from 'path'
 import {
   getControledMihomoConfig,
   getProfileConfig,
   getProfile,
   getProfileItem,
-  getOverride,
-  getOverrideItem,
-  getOverrideConfig,
   getAppConfig
 } from '../config'
-import {
-  mihomoProfileWorkDir,
-  mihomoWorkConfigPath,
-  mihomoWorkDir,
-  overridePath,
-  rulePath
-} from '../utils/dirs'
+import { applySubTemplate, loadProfileSubTemplate } from '../config/subTemplate'
+import { mihomoProfileWorkDir, mihomoWorkConfigPath, mihomoWorkDir, rulePath } from '../utils/dirs'
 import { parse, stringify } from '../utils/yaml'
 import { deepMerge } from '../utils/merge'
 import { createLogger } from '../utils/logger'
-import { decryptAgeContent } from '../utils/age'
 import { DEFAULT_CONTROL_DNS, DEFAULT_CONTROL_SNIFF } from '../../shared/appConfig'
 import { atomicWriteFile } from '../utils/safeFile'
+import { addNodeGeoProbes } from '../resolve/nodeGeo'
 import { evaluateDnsOverrideGuard, type DnsOverrideGuardResult } from './dnsOverrideGuard'
 
 const factoryLogger = createLogger('Factory')
@@ -35,11 +26,11 @@ let runtimeConfig: IMihomoConfig = {} as IMihomoConfig
 interface GenerateProfileOptions {
   profileId?: string
   baseProfile?: IMihomoConfig
-  ageSecretKey?: string
-  profileOverrideIds?: string[]
-  // 调用方已读取的全局 override id 集合：给出时不再自行读取，生成所用的集合与调用方记录的完全一致
-  //（插件订阅校验用它把"参与校验的集合"绑定到校验本身）
-  globalOverrideIds?: string[]
+  // 校验候选订阅时使用的订阅项（其中的模版选择），不给出时读取已保存的订阅项
+  profileItem?: IProfileItem
+  // 调用方已读取的订阅模版设置：给出时不再自行读取，生成所用的模版与调用方记录的完全一致
+  //（插件订阅校验用它把"参与校验的模版"绑定到校验本身）
+  subTemplateConfig?: ISubTemplateConfig
   outputPath?: string
   updateRuntimeConfig?: boolean
 }
@@ -48,11 +39,6 @@ export interface GenerateProfileResult {
   profileId: string | undefined
   // 随本次配置成功应用后同步。
   dnsGuard: DnsOverrideGuardResult
-}
-
-export async function globalOverrideIdsNow(): Promise<string[]> {
-  const { items = [] } = (await getOverrideConfig()) || {}
-  return items.filter((item) => item.global).map((item) => item.id)
 }
 
 // 辅助函数：处理带偏移量的规则
@@ -95,14 +81,11 @@ export async function generateProfile(
   const { current } = profileConfig
   const profileId = options.profileId ?? current
   // 第二阶段：仅依赖 profileId 的读取并行执行。
-  const [currentProfileItem, baseProfile, overrideIds, fetchedControledMihomoConfig] =
-    await Promise.all([
-      getProfileItem(profileId),
-      options.baseProfile ?? getProfile(profileId),
-      getOrderedOverrideIds(profileId, options.profileOverrideIds, options.globalOverrideIds),
-      getControledMihomoConfig()
-    ])
-  const ageSecretKey = options.ageSecretKey ?? currentProfileItem?.ageSecretKey ?? ''
+  const [currentProfileItem, baseProfile, fetchedControledMihomoConfig] = await Promise.all([
+    options.profileItem ?? getProfileItem(profileId),
+    options.baseProfile ?? getProfile(profileId),
+    getControledMihomoConfig()
+  ])
   let controledMihomoConfig = pendingControledMihomoConfig ?? fetchedControledMihomoConfig
   const {
     diffWorkDir = false,
@@ -110,7 +93,7 @@ export async function generateProfile(
     controlSniff = DEFAULT_CONTROL_SNIFF,
     useNameserverPolicy
   } = appConfig
-  // DNS 保护先于覆写和脚本处理，开关在内核应用成功后同步。
+  // DNS 保护先于订阅模版处理，开关在内核应用成功后同步。
   const dnsGuard = evaluateDnsOverrideGuard(
     profileId ?? 'default',
     baseProfile,
@@ -118,8 +101,12 @@ export async function generateProfile(
     options.updateRuntimeConfig !== false
   )
   const { controlDns } = dnsGuard
-  const profileWithOverride = await applyOverrides(baseProfile, overrideIds, ageSecretKey)
-  const currentProfile = await applyRuleOverride(profileId, profileWithOverride)
+  // 订阅模版：订阅文件原样不动，只在生成运行配置时把分组和规则换成模版的
+  const template = await loadProfileSubTemplate(currentProfileItem, options.subTemplateConfig)
+  const templatedProfile = template
+    ? applySubTemplate(baseProfile, template.doc, template.overrideSettings)
+    : baseProfile
+  const currentProfile = await applyRuleOverride(profileId, templatedProfile)
 
   // 根据开关状态过滤控制配置
   controledMihomoConfig = { ...controledMihomoConfig }
@@ -159,6 +146,10 @@ export async function generateProfile(
   // 日志解析启动检测需要基础日志；预览和 Gist 保留用户的实际配置。
   if (['info', 'debug'].includes(coreProfile['log-level']) === false) {
     coreProfile['log-level'] = 'info'
+  }
+  // 节点出口位置的探测通道只加进内核实际加载的配置；订阅校验等临时生成不需要
+  if (options.outputPath === undefined && options.updateRuntimeConfig !== false) {
+    await addNodeGeoProbes(coreProfile)
   }
   const coreConfigStr = stringify(coreProfile)
   if (diffWorkDir && options.outputPath === undefined) {
@@ -268,83 +259,6 @@ async function prepareProfileWorkDir(current: string | undefined): Promise<void>
     copy('ASN.mmdb'),
     copy('BundleMRS.7z')
   ])
-}
-
-async function getOrderedOverrideIds(
-  current: string | undefined,
-  profileOverrideIds?: string[],
-  globalOverrideIds?: string[]
-): Promise<string[]> {
-  const globalOverride = globalOverrideIds ?? (await globalOverrideIdsNow())
-  const override = profileOverrideIds ?? (await getProfileItem(current))?.override ?? []
-  return [...new Set(globalOverride.concat(override))]
-}
-
-async function applyOverrides(
-  profile: IMihomoConfig,
-  overrideIds: string[],
-  ageSecretKey: string
-): Promise<IMihomoConfig> {
-  for (const ov of overrideIds) {
-    const item = await getOverrideItem(ov)
-    const content = await getOverride(ov, item?.ext || 'js')
-    switch (item?.ext) {
-      case 'js':
-        profile = runOverrideScript(profile, content, item)
-        break
-      case 'yaml': {
-        const decryptedContent = await decryptAgeContent(content, ageSecretKey, `override "${ov}"`)
-        let patch = parse(decryptedContent) || {}
-        if (typeof patch !== 'object') patch = {}
-        profile = deepMerge(profile, patch, true)
-        break
-      }
-    }
-  }
-  return profile
-}
-
-function runOverrideScript(
-  profile: IMihomoConfig,
-  script: string,
-  item: IOverrideItem
-): IMihomoConfig {
-  const log = (type: string, data: string, flag = 'a'): void => {
-    writeFileSync(overridePath(item.id, 'log'), `[${type}] ${data}\n`, {
-      encoding: 'utf-8',
-      flag
-    })
-  }
-  try {
-    const ctx = {
-      console: Object.freeze({
-        log(data: never) {
-          log('log', JSON.stringify(data))
-        },
-        info(data: never) {
-          log('info', JSON.stringify(data))
-        },
-        error(data: never) {
-          log('error', JSON.stringify(data))
-        },
-        debug(data: never) {
-          log('debug', JSON.stringify(data))
-        }
-      })
-    }
-    vm.createContext(ctx)
-    const code = `${script} main(${JSON.stringify(profile)})`
-    log('info', '开始执行脚本', 'w')
-    const newProfile = vm.runInContext(code, ctx)
-    if (typeof newProfile !== 'object') {
-      throw new Error('脚本返回值必须是对象')
-    }
-    log('info', '脚本执行成功')
-    return newProfile
-  } catch (e) {
-    log('exception', `脚本执行失败：${e}`)
-    return profile
-  }
 }
 
 export async function getRuntimeConfigStr(): Promise<string> {

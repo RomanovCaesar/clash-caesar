@@ -11,7 +11,7 @@ import BaseErrorBoundary from './components/base/base-error-boundary'
 import { openDevTools, quitApp } from './utils/ipc'
 import { AppConfigProvider } from './hooks/use-app-config'
 import { ControledMihomoConfigProvider } from './hooks/use-controled-mihomo-config'
-import { OverrideConfigProvider } from './hooks/use-override-config'
+import { SubTemplateConfigProvider } from './hooks/use-sub-template-config'
 import { ProfileConfigProvider } from './hooks/use-profile-config'
 import { PluginConfigProvider } from './hooks/use-plugin-config'
 import { RulesProvider } from './hooks/use-rules'
@@ -58,7 +58,7 @@ init().then(() => {
                 <ControledMihomoConfigProvider>
                   <ProfileConfigProvider>
                     <PluginConfigProvider>
-                      <OverrideConfigProvider>
+                      <SubTemplateConfigProvider>
                         <GroupsProvider>
                           <RulesProvider>
                             <ToastProvider>
@@ -66,7 +66,7 @@ init().then(() => {
                             </ToastProvider>
                           </RulesProvider>
                         </GroupsProvider>
-                      </OverrideConfigProvider>
+                      </SubTemplateConfigProvider>
                     </PluginConfigProvider>
                   </ProfileConfigProvider>
                 </ControledMihomoConfigProvider>

@@ -7,7 +7,7 @@ import {
   Logs,
   Mihomo,
   NetworkPageComponent,
-  Override,
+  SubTemplate,
   Profiles,
   Proxies,
   Resources,
@@ -76,8 +76,8 @@ const routes = [
     element: <Connections />
   },
   {
-    path: '/override',
-    element: <Override />
+    path: '/sub-template',
+    element: <SubTemplate />
   },
   {
     path: '/profiles',

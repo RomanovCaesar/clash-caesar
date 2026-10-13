@@ -9,7 +9,7 @@ export const SIDER_CARD_ROUTES: Record<SiderCardKey, string> = {
   proxy: '/proxies',
   rule: '/rules',
   resource: '/resources',
-  override: '/override',
+  subTemplate: '/sub-template',
   connection: '/connections',
   mihomo: '/mihomo',
   dns: '/dns',

@@ -4,6 +4,7 @@ import { IoLogoGithub } from 'react-icons/io5'
 import WebdavConfig from '@renderer/components/settings/webdav-config'
 import GeneralConfig from '@renderer/components/settings/general-config'
 import MihomoConfig from '@renderer/components/settings/mihomo-config'
+import NodeGeoConfig from '@renderer/components/settings/node-geo-config'
 import Actions from '@renderer/components/settings/actions'
 import ShortcutConfig from '@renderer/components/settings/shortcut-config'
 import { FaTelegramPlane } from 'react-icons/fa'
@@ -49,6 +50,7 @@ const Settings: React.FC = () => {
       }
     >
       <GeneralConfig />
+      <NodeGeoConfig />
       <SubStoreConfig />
       <SiderConfig />
       <WebdavConfig />

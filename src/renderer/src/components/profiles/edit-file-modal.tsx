@@ -45,10 +45,10 @@ const EditFileModal: React.FC<Props> = (props) => {
                 variant="light"
                 className="app-nodrag"
                 onPress={() => {
-                  navigate('/override')
+                  navigate('/sub-template')
                 }}
               >
-                {t('profiles.editFile.override')}
+                {t('profiles.editFile.subTemplate')}
               </Button>
               {t('profiles.editFile.feature')}
             </small>

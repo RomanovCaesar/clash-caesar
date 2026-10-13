@@ -42,6 +42,8 @@ export const defaultConfig: IAppConfig = {
   proxyDisplayMode: 'simple',
   proxyDisplayOrder: 'default',
   autoCheckUpdate: true,
+  nodeGeoEnabled: true,
+  hideExitIp: true,
   autoUpdateProfileOnStart: true,
   silentUpdate: true,
   autoCloseConnection: true,
@@ -125,7 +127,11 @@ export const defaultProfileConfig: IProfileConfig = {
   items: []
 }
 
-export const defaultOverrideConfig: IOverrideConfig = {
+export const defaultSubTemplateConfig: ISubTemplateConfig = {
+  enabled: false,
+  global: 'builtin',
+  variant: 'cn',
+  overrideSettings: false,
   items: []
 }
 

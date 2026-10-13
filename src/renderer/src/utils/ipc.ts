@@ -76,15 +76,21 @@ interface IpcApi {
   changeCurrentProfile: (id: string) => Promise<void>
   addProfileUpdater: (item: IProfileItem) => Promise<void>
   removeProfileUpdater: (id: string) => Promise<void>
-  // Override
-  getOverrideConfig: (force?: boolean) => Promise<IOverrideConfig>
-  setOverrideConfig: (config: IOverrideConfig) => Promise<void>
-  getOverrideItem: (id: string) => Promise<IOverrideItem | undefined>
-  addOverrideItem: (item: Partial<IOverrideItem>) => Promise<void>
-  removeOverrideItem: (id: string) => Promise<void>
-  updateOverrideItem: (item: IOverrideItem) => Promise<void>
-  getOverride: (id: string, ext: 'js' | 'yaml' | 'log') => Promise<string>
-  setOverride: (id: string, ext: 'js' | 'yaml', str: string) => Promise<void>
+  // Subscription template
+  getSubTemplateConfig: (force?: boolean) => Promise<ISubTemplateConfig>
+  patchSubTemplateConfig: (
+    patch: Partial<Pick<ISubTemplateConfig, 'enabled' | 'global' | 'variant' | 'overrideSettings'>>
+  ) => Promise<ISubTemplateConfig>
+  getSubTemplateContent: (id: string, variant?: SubTemplateVariant) => Promise<string>
+  setSubTemplateContent: (id: string, content: string) => Promise<void>
+  importSubTemplate: (
+    name: string,
+    content: string,
+    preview?: boolean
+  ) => Promise<{ content: string; stats: ISubTemplateStats; item?: ISubTemplateItem }>
+  fetchSubTemplateUrl: (url: string) => Promise<string>
+  renameSubTemplate: (id: string, name: string) => Promise<void>
+  removeSubTemplate: (id: string) => Promise<void>
   // File
   getFileStr: (path: string) => Promise<string>
   setFileStr: (path: string, str: string) => Promise<void>
@@ -96,7 +102,7 @@ interface IpcApi {
   getFilePath: (ext: string[], title?: string, filterName?: string) => Promise<string[] | undefined>
   readTextFile: (filePath: string) => Promise<string>
   readImageFileDataURL: (filePath: string) => Promise<string>
-  openFile: (type: 'profile' | 'override', id: string, ext?: 'yaml' | 'js') => Promise<void>
+  openFile: (type: 'profile', id: string) => Promise<void>
   // Core
   restartCore: () => Promise<void>
   mihomoHotReloadConfig: () => Promise<void>
@@ -184,6 +190,9 @@ interface IpcApi {
   exportGistAgeSecretKey: () => Promise<boolean>
   fetchIPInfo: (url: string) => Promise<unknown>
   measureLatency: (url: string) => Promise<number | null>
+  getNodeGeo: () => Promise<Record<string, INodeGeo>>
+  getNodeGeoStatus: () => Promise<INodeGeoStatus>
+  refreshNodeGeo: (force?: boolean) => Promise<void>
   getImageDataURL: (url: string) => Promise<string>
   relaunchApp: () => Promise<void>
   quitApp: () => Promise<void>
@@ -247,15 +256,15 @@ export const {
   changeCurrentProfile,
   addProfileUpdater,
   removeProfileUpdater,
-  // Override
-  getOverrideConfig,
-  setOverrideConfig,
-  getOverrideItem,
-  addOverrideItem,
-  removeOverrideItem,
-  updateOverrideItem,
-  getOverride,
-  setOverride,
+  // Subscription template
+  getSubTemplateConfig,
+  patchSubTemplateConfig,
+  getSubTemplateContent,
+  setSubTemplateContent,
+  importSubTemplate,
+  fetchSubTemplateUrl,
+  renameSubTemplate,
+  removeSubTemplate,
   // File
   getFileStr,
   setFileStr,
@@ -349,6 +358,9 @@ export const {
   exportGistAgeSecretKey,
   fetchIPInfo,
   measureLatency,
+  getNodeGeo,
+  getNodeGeoStatus,
+  refreshNodeGeo,
   getImageDataURL,
   relaunchApp,
   quitApp

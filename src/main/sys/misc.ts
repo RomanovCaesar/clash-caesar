@@ -4,14 +4,7 @@ import path from 'path'
 import { promisify } from 'util'
 import { app, dialog, nativeImage, nativeTheme, shell } from 'electron'
 import i18next from 'i18next'
-import {
-  dataDir,
-  exePath,
-  mihomoCorePath,
-  overridePath,
-  profilePath,
-  resourcesDir
-} from '../utils/dirs'
+import { dataDir, exePath, mihomoCorePath, profilePath, resourcesDir } from '../utils/dirs'
 import { checkAdminPrivileges } from '../core/admin'
 
 export function getFilePath(
@@ -54,12 +47,9 @@ export async function readImageFileDataURL(filePath: string): Promise<string> {
   return `data:${mimeType};base64,${data.toString('base64')}`
 }
 
-export function openFile(type: 'profile' | 'override', id: string, ext?: 'yaml' | 'js'): void {
+export function openFile(type: 'profile', id: string): void {
   if (type === 'profile') {
     shell.openPath(profilePath(id))
-  }
-  if (type === 'override') {
-    shell.openPath(overridePath(id, ext || 'js'))
   }
 }
 

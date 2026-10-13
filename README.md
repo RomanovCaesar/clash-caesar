@@ -28,7 +28,7 @@ Clash Caesar 是一个开源的 Mihomo（Clash Meta）图形客户端，基于 [
 - 开箱即用的虚拟网卡（TUN）模式，无需安装服务
 - 系统代理、TUN、DNS 覆写、嗅探覆写一键切换，托盘图标实时显示代理状态
 - 支持大部分 Mihomo 常用配置的图形化修改
-- 强大的覆写功能（YAML / JavaScript），可任意修订订阅配置
+- 订阅模版：把订阅的分组和分流规则换成统一的一套，节点保持不变，订阅文件本身不会被修改；内置与 [m-ui](https://github.com/RomanovCaesar/m-ui) 相同的模版（中国大陆 / 俄罗斯 / 伊朗），也可导入自己的模版或从现有订阅生成
 - 深度集成 Sub-Store，轻松管理订阅
 - 订阅按 WiFi 网络自动切换
 - 连接管理、流量统计与悬浮窗
@@ -67,6 +67,7 @@ pnpm run format:check && pnpm run lint:check && pnpm run typecheck && pnpm test
 ## 与 Clash Party 的主要区别
 
 - 内核升级改由客户端下载并替换，修复了「升级成功却提示失败」以及左右两侧版本号显示不一致的问题
+- 用订阅模版取代了 YAML / JavaScript 覆写
 - 移除了 Smart 内核、GitHub 下载加速镜像和在线主题库
 - 独立的应用标识与数据目录（`%APPDATA%\clash-caesar`），可与 Clash Party 同时安装
 - 订阅请求默认 User-Agent 为 `clash.caesar/v<版本> (clash.meta)`

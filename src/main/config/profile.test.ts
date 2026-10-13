@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getOverrideConfig, updateOverrideConfig } from './override'
+import { getSubTemplateConfig, patchSubTemplateConfig } from './subTemplate'
 import {
   createProfile,
   getProfileConfig,
@@ -55,15 +55,8 @@ vi.mock('../utils/safeFile', async (importOriginal) => {
     }
   }
 })
-// the real override module backs the global override set (override.yaml lives in the test dir)
-vi.mock('../core/factory', async () => {
-  const { getOverrideConfig } = await import('./override')
-  return {
-    generateProfile: mocks.generateProfile,
-    globalOverrideIdsNow: async () =>
-      (await getOverrideConfig()).items.filter((o) => o.global).map((o) => o.id)
-  }
-})
+// the real subTemplate module backs the template settings (sub-templates.yaml lives in the test dir)
+vi.mock('../core/factory', () => ({ generateProfile: mocks.generateProfile }))
 vi.mock('i18next', () => ({ default: { t: (key: string) => key } }))
 vi.mock('axios', () => ({ default: { get: mocks.axiosGet } }))
 vi.mock('../utils/age', () => ({
@@ -78,8 +71,8 @@ vi.mock('../utils/dirs', () => ({
     return join(testDir, 'profile.yaml')
   },
   profilePath: (id: string) => join(testDir, 'profiles', `${id}.yaml`),
-  overrideConfigPath: () => join(testDir, 'override.yaml'),
-  overridePath: (id: string, ext: string) => join(testDir, 'overrides', `${id}.${ext}`)
+  subTemplateConfigPath: () => join(testDir, 'sub-templates.yaml'),
+  subTemplatePath: (id: string) => join(testDir, 'sub-templates', `${id}.yaml`)
 }))
 vi.mock('../utils/logger', () => ({
   createLogger: () => ({
@@ -142,7 +135,10 @@ beforeEach(async () => {
     'current: remote\nitems:\n  - id: remote\n    type: remote\n    name: Remote\n'
   )
   writeFileSync(join(testDir, 'profiles', 'remote.yaml'), oldProfile)
-  writeFileSync(join(testDir, 'override.yaml'), 'items: []\n')
+  writeFileSync(
+    join(testDir, 'sub-templates.yaml'),
+    'enabled: false\nglobal: builtin\nvariant: cn\noverrideSettings: false\nitems: []\n'
+  )
 
   vi.clearAllMocks()
   mocks.onProfileConfigPath.mockReset()
@@ -160,17 +156,13 @@ beforeEach(async () => {
   mocks.getPluginItem.mockResolvedValue({ id: 'pg', interval: 60, autoUpdate: true })
   // the module caches must match the freshly written files (all real writes go through the queue and keep them in sync)
   await getProfileConfig(true)
-  await getOverrideConfig(true)
+  await getSubTemplateConfig(true)
 })
 
-const globalOverride = (id: string): IOverrideItem => ({
-  id,
-  type: 'local',
-  ext: 'yaml',
-  name: id,
-  updated: 1,
-  global: true
-})
+// the template choice stored on a profile item (undefined = follow the global template)
+const setTemplate = async (id: string, subTemplate: string | undefined): Promise<void> => {
+  await updateProfileItem({ ...(await getProfileItem(id))!, subTemplate })
+}
 
 afterEach(() => {
   rmSync(testDir, { recursive: true, force: true })
@@ -342,15 +334,15 @@ describe('plugin subscription validation follow-ups (V6 regressions)', () => {
     )
   })
 
-  it('does not revert a user override changed while the core was validating', async () => {
+  it('does not revert a user template choice changed while the core was validating', async () => {
     await upsertPluginProfile(meta, newProfile)
-    await updateProfileItem({ ...(await getProfileItem('plugin1'))!, override: ['A'] })
-    // the validator "takes a while"; meanwhile the user switches the override to B
+    await setTemplate('plugin1', 'none')
+    // the validator "takes a while"; meanwhile the user switches the subscription to the built-in template
     mocks.checkProfileConfig.mockImplementationOnce(async () => {
-      await updateProfileItem({ ...(await getProfileItem('plugin1'))!, override: ['B'] })
+      await setTemplate('plugin1', 'builtin')
     })
     await upsertPluginProfile(meta, oldProfile)
-    expect((await getProfileItem('plugin1'))?.override).toEqual(['B'])
+    expect((await getProfileItem('plugin1'))?.subTemplate).toBe('builtin')
     expect(readFileSync(join(testDir, 'profiles', 'plugin1.yaml'), 'utf8')).toBe(oldProfile)
   })
 
@@ -403,87 +395,88 @@ describe('plugin subscription validation follow-ups (V7 regressions)', () => {
     expect(vi.mocked(addProfileUpdater)).not.toHaveBeenCalled()
   })
 
-  it('R2-ISS-053: an override enabled during validation triggers a re-validation against the new set before the write', async () => {
+  it('R2-ISS-053: a template chosen during validation triggers a re-validation against it before the write', async () => {
+    await patchSubTemplateConfig({ enabled: true })
     await upsertPluginProfile(meta, newProfile)
-    await updateProfileItem({ ...(await getProfileItem('plugin1'))!, override: ['A'] })
+    await setTemplate('plugin1', 'none')
     mocks.generateProfile.mockClear()
     mocks.checkProfileConfig.mockImplementationOnce(async () => {
-      await updateProfileItem({ ...(await getProfileItem('plugin1'))!, override: ['A', 'B'] })
+      await setTemplate('plugin1', undefined) // follow the global (built-in) template
     })
     await upsertPluginProfile(meta, oldProfile)
-    // validated once against [A], then again against [A, B]; the write happened after the second pass
+    // validated once without a template, then again with the built-in one; the write happened after the second pass
     expect(mocks.generateProfile).toHaveBeenCalledTimes(2)
-    expect(mocks.generateProfile.mock.calls[0][1]).toMatchObject({ profileOverrideIds: ['A'] })
-    expect(mocks.generateProfile.mock.calls[1][1]).toMatchObject({ profileOverrideIds: ['A', 'B'] })
-    expect((await getProfileItem('plugin1'))?.override).toEqual(['A', 'B'])
+    expect(mocks.generateProfile.mock.calls[0][1].profileItem.subTemplate).toBe('none')
+    expect(mocks.generateProfile.mock.calls[1][1].profileItem.subTemplate).toBeUndefined()
+    expect((await getProfileItem('plugin1'))?.subTemplate).toBeUndefined()
     expect(readFileSync(join(testDir, 'profiles', 'plugin1.yaml'), 'utf8')).toBe(oldProfile)
   })
 
-  it('R2-ISS-053: a global override toggled during validation also forces a re-validation', async () => {
+  it('R2-ISS-053: templates switched on during validation also force a re-validation', async () => {
     await upsertPluginProfile(meta, newProfile)
     mocks.generateProfile.mockClear()
     mocks.checkProfileConfig.mockImplementationOnce(async () => {
-      await updateOverrideConfig(() => ({ items: [globalOverride('G')] }))
+      await patchSubTemplateConfig({ enabled: true })
     })
     await upsertPluginProfile(meta, oldProfile)
     expect(mocks.generateProfile).toHaveBeenCalledTimes(2)
-    // the global set the core validated against is the one the caller recorded, passed in explicitly
-    expect(mocks.generateProfile.mock.calls[0][1]).toMatchObject({ globalOverrideIds: [] })
-    expect(mocks.generateProfile.mock.calls[1][1]).toMatchObject({ globalOverrideIds: ['G'] })
+    // the settings the core validated against are the ones the caller recorded, passed in explicitly
+    expect(mocks.generateProfile.mock.calls[0][1].subTemplateConfig.enabled).toBe(false)
+    expect(mocks.generateProfile.mock.calls[1][1].subTemplateConfig.enabled).toBe(true)
     expect(readFileSync(join(testDir, 'profiles', 'plugin1.yaml'), 'utf8')).toBe(oldProfile)
   })
 
-  it('R2-ISS-053 (V1-R5): a global override flipped off and back on around the generation step is still caught', async () => {
-    await updateOverrideConfig(() => ({ items: [globalOverride('G')] }))
+  it('R2-ISS-053 (V1-R5): templates flipped off and back on around the generation step are still caught', async () => {
+    await patchSubTemplateConfig({ enabled: true })
     await upsertPluginProfile(meta, newProfile)
     mocks.generateProfile.mockClear()
-    // the recorded set is [G]; G is off while the config is generated and back on before the commit check
+    // the recorded settings are "on"; templates are off while the config is generated and back on before the commit check
     mocks.generateProfile.mockImplementationOnce(async (_c, o) => {
-      expect(o?.globalOverrideIds).toEqual(['G']) // generation uses the recorded set, not a fresh read
-      await updateOverrideConfig(() => ({ items: [] }))
+      expect(o?.subTemplateConfig?.enabled).toBe(true) // generation uses the recorded settings, not a fresh read
+      await patchSubTemplateConfig({ enabled: false })
       return 'remote'
     })
     mocks.checkProfileConfig.mockImplementationOnce(async () => {
-      await updateOverrideConfig(() => ({ items: [globalOverride('G')] }))
+      await patchSubTemplateConfig({ enabled: true })
     })
     await upsertPluginProfile(meta, oldProfile)
     expect(mocks.generateProfile).toHaveBeenCalledTimes(1)
     expect(readFileSync(join(testDir, 'profiles', 'plugin1.yaml'), 'utf8')).toBe(oldProfile)
   })
 
-  it('R2-ISS-053 (V2-R5): a global override toggle cannot land between the final check and the file write', async () => {
+  it('R2-ISS-053 (V2-R5): a template toggle cannot land between the final check and the file write', async () => {
     await upsertPluginProfile(meta, newProfile)
     mocks.generateProfile.mockClear()
-    let toggle: Promise<void> | undefined
+    let toggle: Promise<unknown> | undefined
     let landedDuringWrite: boolean | undefined
     mocks.beforeWrite.mockImplementation(async (p: string) => {
       if (toggle || !p.endsWith(join('profiles', 'plugin1.yaml'))) return
-      // the commit passed its final check and is about to replace the file: flip a global override now
-      toggle = updateOverrideConfig(() => ({ items: [globalOverride('G')] }))
+      // the commit passed its final check and is about to replace the file: switch templates on now
+      toggle = patchSubTemplateConfig({ enabled: true })
       await new Promise((r) => setTimeout(r, 30))
-      landedDuringWrite = (await getOverrideConfig()).items.length > 0
+      landedDuringWrite = (await getSubTemplateConfig()).enabled
     })
     await upsertPluginProfile(meta, oldProfile)
     // the toggle was queued behind the commit's critical section (shared runtime-config write queue)
     expect(landedDuringWrite).toBe(false)
     await toggle
-    expect((await getOverrideConfig()).items.map((i) => i.id)).toEqual(['G'])
-    // what landed was validated against the set that was current at the write: no globals
+    expect((await getSubTemplateConfig()).enabled).toBe(true)
+    // what landed was validated against the settings that were current at the write: templates off
     expect(mocks.generateProfile).toHaveBeenCalledTimes(1)
-    expect(mocks.generateProfile.mock.calls[0][1]).toMatchObject({ globalOverrideIds: [] })
+    expect(mocks.generateProfile.mock.calls[0][1].subTemplateConfig.enabled).toBe(false)
     expect(readFileSync(join(testDir, 'profiles', 'plugin1.yaml'), 'utf8')).toBe(oldProfile)
   })
 
-  it('R2-ISS-063: a forced override read that completes after a queued write does not roll the cache back', async () => {
+  it('R2-ISS-063: a forced template settings read that completes after a queued write does not roll the cache back', async () => {
     let injected = false
     mocks.afterRead.mockImplementation(async (p: string) => {
-      if (injected || !p.endsWith('override.yaml')) return
+      if (injected || !p.endsWith('sub-templates.yaml')) return
       injected = true
-      await updateOverrideConfig(() => ({ items: [globalOverride('NEW')] }))
+      await patchSubTemplateConfig({ enabled: true })
     })
-    const forced = await getOverrideConfig(true)
-    expect(forced.items.map((i) => i.id)).toEqual(['NEW'])
-    expect((await getOverrideConfig()).items.map((i) => i.id)).toEqual(['NEW'])
+    const forced = await getSubTemplateConfig(true)
+    expect(forced.enabled).toBe(true)
+    expect((await getSubTemplateConfig()).enabled).toBe(true)
   })
 
   it('R2-ISS-065: a budget that expires while the commit waits for the write queue aborts the commit without writing', async () => {
@@ -533,13 +526,15 @@ describe('plugin subscription validation follow-ups (V7 regressions)', () => {
     expect(vi.mocked(addProfileUpdater)).toHaveBeenCalledOnce() // nothing changed → not re-armed, but armed
   })
 
-  it('R2-ISS-053: gives up after bounded re-validations when the override set keeps changing; old file kept', async () => {
+  it('R2-ISS-053: gives up after bounded re-validations when the template choice keeps changing; old file kept', async () => {
+    await patchSubTemplateConfig({ enabled: true })
     await upsertPluginProfile(meta, newProfile)
+    await setTemplate('plugin1', 'none')
     mocks.generateProfile.mockClear()
     let n = 0
     mocks.checkProfileConfig.mockImplementation(async () => {
       n++
-      await updateProfileItem({ ...(await getProfileItem('plugin1'))!, override: [`O${n}`] })
+      await setTemplate('plugin1', n % 2 === 1 ? 'builtin' : 'none')
     })
     await expect(upsertPluginProfile(meta, oldProfile)).rejects.toMatchObject({
       code: 'PLUGIN_PROFILE_INVALID'

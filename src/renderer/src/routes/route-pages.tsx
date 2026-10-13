@@ -3,7 +3,7 @@ import { onInitialContentReady } from '@renderer/utils/startup'
 import { createPreloadablePage } from './preloadable-page'
 
 const NetworkPage = createPreloadablePage(() => import('@renderer/pages/network'))
-const OverridePage = createPreloadablePage(() => import('@renderer/pages/override'))
+const SubTemplatePage = createPreloadablePage(() => import('@renderer/pages/sub-template'))
 const ProxiesPage = createPreloadablePage(() => import('@renderer/pages/proxies'))
 const RulesPage = createPreloadablePage(() => import('@renderer/pages/rules'))
 const SettingsPage = createPreloadablePage(() => import('@renderer/pages/settings'))
@@ -20,7 +20,7 @@ const SubStorePage = createPreloadablePage(() => import('@renderer/pages/substor
 const TrafficPage = createPreloadablePage(() => import('@renderer/pages/traffic'))
 
 export const NetworkPageComponent = NetworkPage.Page
-export const Override = OverridePage.Page
+export const SubTemplate = SubTemplatePage.Page
 export const Proxies = ProxiesPage.Page
 export const Rules = RulesPage.Page
 export const Settings = SettingsPage.Page
@@ -50,7 +50,7 @@ const remainingPageLoaders: Array<() => Promise<unknown>> = [
   DNSPage.preload,
   SnifferPage.preload,
   ResourcesPage.preload,
-  OverridePage.preload,
+  SubTemplatePage.preload,
   LogsPage.preload,
   SubStorePage.preload,
   NetworkPage.preload,

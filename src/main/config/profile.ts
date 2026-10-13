@@ -15,7 +15,7 @@ import { DEFAULT_MIHOMO_PORTS } from '../../shared/appConfig'
 import { subStorePort } from '../resolve/server'
 import { mihomoCloseAllConnections, mihomoHotReloadConfig } from '../core/mihomoApi'
 import { checkProfileConfig, restartCore, type CheckProfileOptions } from '../core/manager'
-import { generateProfile, globalOverrideIdsNow } from '../core/factory'
+import { generateProfile } from '../core/factory'
 import { addProfileUpdater, removeProfileUpdater } from '../core/profileUpdater'
 import {
   mihomoCorePath,
@@ -30,12 +30,13 @@ import { getAppConfig } from './app'
 import { getControledMihomoConfig } from './controledMihomo'
 import { getPluginItem, pluginSchedule } from './plugin'
 import { runtimeConfigWriteQueue } from './runtimeConfigQueue'
+import { getSubTemplateConfig, subTemplateKey } from './subTemplate'
 
 const profileLogger = createLogger('Profile')
 const execFilePromise = promisify(execFile)
 
 let profileConfig: IProfileConfig
-// 与 override.yaml 共用（见 runtimeConfigQueue.ts）
+// 与 sub-templates.yaml 共用（见 runtimeConfigQueue.ts）
 const profileConfigWriteQueue = runtimeConfigWriteQueue
 let changeProfileQueue: Promise<void> = Promise.resolve()
 // 并发去重
@@ -481,7 +482,7 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
     url: item.url,
     substore: item.substore || false,
     interval: item.interval || 0,
-    override: item.override || [],
+    subTemplate: item.subTemplate,
     useProxy: item.useProxy || false,
     allowFixedInterval: item.allowFixedInterval || false,
     autoUpdate: item.autoUpdate ?? true,
@@ -595,12 +596,12 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
   }
 }
 
-// 候选校验：把新内容放进临时目录，生成带 override 的完整运行配置，再交核心 `-t` 校验。远程订阅与插件订阅
+// 候选校验：把新内容放进临时目录，生成套用订阅模版后的完整运行配置，再交核心 `-t` 校验。远程订阅与插件订阅
 // 共用；失败抛错，调用方保留旧文件。
 export async function validateProfileCandidate(
   item: IProfileItem,
   content: string,
-  opts: CheckProfileOptions & { globalOverrideIds?: string[] } = {}
+  opts: CheckProfileOptions & { subTemplateConfig?: ISubTemplateConfig } = {}
 ): Promise<void> {
   const candidateDir = await mkdtemp(join(tmpdir(), 'clash-caesar-profile-'))
   const candidatePath = join(candidateDir, 'config.yaml')
@@ -611,9 +612,8 @@ export async function validateProfileCandidate(
     await generateProfile(undefined, {
       profileId: item.id,
       baseProfile,
-      ageSecretKey: item.ageSecretKey,
-      profileOverrideIds: item.override ?? [],
-      globalOverrideIds: opts.globalOverrideIds,
+      profileItem: item,
+      subTemplateConfig: opts.subTemplateConfig,
       outputPath: candidatePath,
       updateRuntimeConfig: false
     })
@@ -806,28 +806,23 @@ export function isPluginProfileInvalidError(e: unknown): boolean {
 }
 
 // 插件 profile：内容已由 plugin 网关取得，这里只写内容 + 维护 profile item，不走远程 URL 下载。
-// 写入前与远程订阅一样先跑候选校验（含用户 override 与核心 -t）：结构合法但语义非法的内容不得覆盖仍可用的旧订阅。
+// 写入前与远程订阅一样先跑候选校验（含订阅模版与核心 -t）：结构合法但语义非法的内容不得覆盖仍可用的旧订阅。
 // 核心校验子进程的硬上限：即便调用方没有预算 signal，一次 `-t` 也不能无限期占住插件锁
 const PLUGIN_PROFILE_CHECK_TIMEOUT_MS = 60_000
 
-// 一次校验只覆盖当时参与生成运行配置的 override 集合（profile 自己的 override 列表 + 全局 override）。
-// 全局集合由这里读一次并原样传给 generateProfile，键与校验所用集合按构造一致；落盘前在 profile 写队列内
-// 重新推导同一集合核对，变了就按新集合重新校验（有界），保证写下的"内容 + override"组合经过校验。
-// override 文件内容本身的编辑不在此列（与远程订阅一致）。
-function overrideSetKey(item: IProfileItem | undefined, globalIds: string[]): string {
-  return JSON.stringify({ own: item?.override ?? [], global: globalIds })
-}
-
+// 一次校验只覆盖当时参与生成运行配置的订阅模版（订阅自己的选择 + 全局设置）。模版设置由这里读一次并原样
+// 传给 generateProfile，指纹与校验所用的模版按构造一致；落盘前在 profile 写队列内重新推导同一指纹核对，
+// 变了就按新模版重新校验（有界），保证写下的"内容 + 模版"组合经过校验。
 const MAX_PLUGIN_PROFILE_REVALIDATIONS = 2
 
-class OverrideChangedError extends Error {}
+class SubTemplateChangedError extends Error {}
 
 export async function upsertPluginProfile(
   meta: { profileId: string; pluginId: string; name: string },
   content: string,
   signal?: AbortSignal
 ): Promise<void> {
-  // 插件拥有的字段；用户在 profile 上设置的其它字段（override 等）不属于这里，写回时不得带入旧快照。
+  // 插件拥有的字段；用户在 profile 上设置的其它字段（订阅模版等）不属于这里，写回时不得带入旧快照。
   // 调度字段（interval / autoUpdate）不在这里：它们在写入时从插件记录现读，见 commitPluginProfile
   const owned = {
     id: meta.profileId,
@@ -837,16 +832,16 @@ export async function upsertPluginProfile(
     updated: Date.now()
   }
   for (let attempt = 0; ; attempt++) {
-    // 校验用当前快照里的 override（与运行时一致）
+    // 校验用当前快照里的模版选择（与运行时一致）
     const snapshot = await getProfileItem(meta.profileId)
     const candidate: IProfileItem = { ...snapshot, ...owned }
-    const globalIds = await globalOverrideIdsNow()
-    const validatedKey = overrideSetKey(candidate, globalIds)
+    const templateConfig = await getSubTemplateConfig()
+    const validatedKey = subTemplateKey(candidate, templateConfig)
     try {
       await validateProfileCandidate(candidate, content, {
         signal,
         timeoutMs: PLUGIN_PROFILE_CHECK_TIMEOUT_MS,
-        globalOverrideIds: globalIds
+        subTemplateConfig: templateConfig
       })
     } catch (e) {
       throw new PluginProfileInvalidError(e)
@@ -855,14 +850,14 @@ export async function upsertPluginProfile(
       await commitPluginProfile(meta, owned, content, validatedKey, signal)
       return
     } catch (e) {
-      if (!(e instanceof OverrideChangedError)) throw e
-      // 校验期间 override 集合变了：按新集合再校验一次；一直在变就放弃本次，旧订阅原样保留
+      if (!(e instanceof SubTemplateChangedError)) throw e
+      // 校验期间模版变了：按新模版再校验一次；一直在变就放弃本次，旧订阅原样保留
       if (attempt >= MAX_PLUGIN_PROFILE_REVALIDATIONS) throw new PluginProfileInvalidError(e)
     }
   }
 }
 
-// 落盘（profile 写队列内，同一临界区）：核对 override 集合 → 查预算 → 写订阅文件 → 更新 item。
+// 落盘（profile 写队列内，同一临界区）：核对模版指纹 → 查预算 → 写订阅文件 → 更新 item。
 // 订阅文件一旦写下，item 写入必须完成（§0.4 唯一的持久化提交；半截提交比迟到的提交更糟）。
 async function commitPluginProfile(
   meta: { profileId: string; pluginId: string; name: string },
@@ -881,8 +876,8 @@ async function commitPluginProfile(
     entered = true
     const idx = config.items.findIndex((i) => i.id === meta.profileId)
     const current = idx === -1 ? undefined : config.items[idx]
-    if (overrideSetKey(current, await globalOverrideIdsNow()) !== validatedKey) {
-      throw new OverrideChangedError('profile override changed during validation')
+    if (subTemplateKey(current, await getSubTemplateConfig()) !== validatedKey) {
+      throw new SubTemplateChangedError('subscription template changed during validation')
     }
     // 写入边界：校验通过后到这里（清理临时目录、读取配置）预算也可能耗尽；下面是第一处落盘，之前最后一次查 signal
     if (signal?.aborted) throw new PluginProfileInvalidError(signal.reason)

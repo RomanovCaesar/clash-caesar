@@ -50,15 +50,15 @@ const validInvokeChannels = [
   'changeCurrentProfile',
   'addProfileUpdater',
   'removeProfileUpdater',
-  // Override
-  'getOverrideConfig',
-  'setOverrideConfig',
-  'getOverrideItem',
-  'addOverrideItem',
-  'removeOverrideItem',
-  'updateOverrideItem',
-  'getOverride',
-  'setOverride',
+  // Subscription template
+  'getSubTemplateConfig',
+  'patchSubTemplateConfig',
+  'getSubTemplateContent',
+  'setSubTemplateContent',
+  'importSubTemplate',
+  'fetchSubTemplateUrl',
+  'renameSubTemplate',
+  'removeSubTemplate',
   // File
   'getFileStr',
   'setFileStr',
@@ -158,6 +158,9 @@ const validInvokeChannels = [
   'exportGistAgeSecretKey',
   'fetchIPInfo',
   'measureLatency',
+  'getNodeGeo',
+  'getNodeGeoStatus',
+  'refreshNodeGeo',
   'getImageDataURL',
   'getIconDataURL',
   'getAppName',
@@ -178,7 +181,9 @@ const validListenChannels = [
   'updateDownloadProgress',
   'pluginConfigUpdated',
   'openPluginFile',
-  'dnsOverrideAutoDisabled'
+  'dnsOverrideAutoDisabled',
+  'subTemplateConfigUpdated',
+  'nodeGeoUpdated'
 ] as const
 
 // 允许的 send channels 白名单
