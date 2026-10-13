@@ -23,6 +23,7 @@ extraResources:
 protocols:
   name: 'Clash Caesar URI Scheme'
   schemes:
+    - 'clash-caesar'
     - 'clash'
     - 'mihomo'
 fileAssociations:

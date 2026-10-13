@@ -24,6 +24,7 @@ import i18next, { resources } from '../../shared/i18n'
 import {
   DEFAULT_MIHOMO_LAN_ALLOWED_IPS,
   DEFAULT_MIHOMO_SKIP_AUTH_PREFIXES,
+  DEEP_LINK_SCHEMES,
   getDefaultMihomoTunDevice
 } from '../../shared/appConfig'
 import { stringify } from './yaml'
@@ -470,14 +471,16 @@ async function migration(): Promise<void> {
 }
 
 function initDeeplink(): void {
-  if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient('clash', process.execPath, [path.resolve(process.argv[1])])
-      app.setAsDefaultProtocolClient('mihomo', process.execPath, [path.resolve(process.argv[1])])
+  // clash:// 和 mihomo:// 是各家客户端通用的协议，同时装了别的客户端时谁最后启动就归谁；
+  // clash-caesar:// 是本软件专用的，m-ui 等自家面板用它保证打开的一定是 Clash Caesar
+  for (const scheme of DEEP_LINK_SCHEMES) {
+    if (process.defaultApp) {
+      if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient(scheme, process.execPath, [path.resolve(process.argv[1])])
+      }
+    } else {
+      app.setAsDefaultProtocolClient(scheme)
     }
-  } else {
-    app.setAsDefaultProtocolClient('clash')
-    app.setAsDefaultProtocolClient('mihomo')
   }
 }
 

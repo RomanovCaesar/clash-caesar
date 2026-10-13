@@ -8,6 +8,9 @@ export const APP_ISSUES_URL = `${APP_REPO_URL}/issues/new`
 
 export const APP_TELEGRAM_URL = 'https://t.me/ClashCaesar'
 
+// 深链协议：clash-caesar:// 是本软件专用的，其余两个是各家客户端通用的
+export const DEEP_LINK_SCHEMES = ['clash-caesar', 'clash', 'mihomo'] as const
+
 export const DEFAULT_CONTROL_DNS = false
 
 export const DEFAULT_CONTROL_SNIFF = true

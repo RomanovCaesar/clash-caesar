@@ -42,6 +42,18 @@ describe('findDeepLink', () => {
     expect(findDeepLink(['app', 'MIHOMO://install-plugin?url=x'])).toBe(
       'MIHOMO://install-plugin?url=x'
     )
+    expect(findDeepLink(['app', 'clash-caesar://install-config?url=x'])).toBe(
+      'clash-caesar://install-config?url=x'
+    )
+  })
+
+  it('imports a subscription from the m-ui "Import to Clash Caesar" link', async () => {
+    const sub = 'https://panel.example:2096/sub/abc123/clash?x=1&y=2'
+    await handleDeepLink(
+      `clash-caesar://install-config?url=${encodeURIComponent(sub)}&name=${encodeURIComponent('张三 user')}`
+    )
+    expect(addProfileItem).toHaveBeenCalledWith({ type: 'remote', name: '张三 user', url: sub })
+    expect(safeShowErrorBox).not.toHaveBeenCalled()
   })
 
   it('ignores unrelated arguments', () => {

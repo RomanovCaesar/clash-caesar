@@ -1,5 +1,6 @@
 import { Notification } from 'electron'
 import i18next from 'i18next'
+import { DEEP_LINK_SCHEMES } from '../shared/appConfig'
 import { addProfileItem } from './config'
 import { installRemotePlugin, loginPlugin } from './resolve/plugin'
 import { mainWindow } from './window'
@@ -8,7 +9,7 @@ import { safeShowErrorBox } from './utils/init'
 export function findDeepLink(args: string[]): string | undefined {
   return args.find((arg) => {
     const lower = arg.toLowerCase()
-    return lower.startsWith('clash://') || lower.startsWith('mihomo://')
+    return DEEP_LINK_SCHEMES.some((scheme) => lower.startsWith(`${scheme}://`))
   })
 }
 
