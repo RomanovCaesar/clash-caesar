@@ -131,7 +131,7 @@ const ProfileCard: React.FC<Props> = (props) => {
                     className={`text-[24px] ${match ? 'text-primary-foreground' : 'text-foreground'}`}
                   />
                 </Button>
-                {info.type === 'remote' && (
+                {(info.type === 'remote' || info.type === 'mui') && (
                   <Tooltip placement="top" delay={1000} content={dayjs(info.updated).fromNow()}>
                     <Button
                       isIconOnly
@@ -153,7 +153,7 @@ const ProfileCard: React.FC<Props> = (props) => {
                 )}
               </div>
             </div>
-            {info.type === 'remote' && extra && (
+            {(info.type === 'remote' || info.type === 'mui') && extra && (
               <div
                 className={`mt-2 flex justify-between ${match ? 'text-primary-foreground' : 'text-foreground'} `}
               >
@@ -187,7 +187,7 @@ const ProfileCard: React.FC<Props> = (props) => {
             )}
           </CardBody>
           <CardFooter className="pt-0">
-            {info.type === 'remote' && !extra && (
+            {(info.type === 'remote' || info.type === 'mui') && !extra && (
               <div
                 className={`w-full mt-2 flex justify-between ${match ? 'text-primary-foreground' : 'text-foreground'}`}
               >

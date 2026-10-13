@@ -33,7 +33,7 @@ async function updateProfile(id: string): Promise<void> {
   updatingProfileIds.add(id)
   try {
     const item = await getProfileItem(id)
-    if (item && item.type === 'remote') {
+    if (item && (item.type === 'remote' || item.type === 'mui')) {
       await addProfileItem(item)
       // 后台定时更新完成后主动通知渲染层，否则订阅列表的更新时间/流量要等窗口重新聚焦才刷新（#1570）
       // 动态 import 避免与 window.ts 形成静态循环依赖
@@ -69,7 +69,11 @@ function updateTask(itemId: string, logLabel: string): () => Promise<void> {
 }
 
 function scheduleProfileUpdate(item: IProfileItem): void {
-  if ((item.type !== 'remote' && item.type !== 'plugin') || !item.autoUpdate || !item.interval)
+  if (
+    (item.type !== 'remote' && item.type !== 'plugin' && item.type !== 'mui') ||
+    !item.autoUpdate ||
+    !item.interval
+  )
     return
 
   const itemId = item.id
@@ -119,7 +123,7 @@ export async function initProfileUpdater(): Promise<void> {
   for (const item of items.filter((i) => i.id !== current)) {
     await auditPluginProfileVault(item)
 
-    if (item.type === 'remote' && item.autoUpdate && item.interval) {
+    if ((item.type === 'remote' || item.type === 'mui') && item.autoUpdate && item.interval) {
       await addProfileUpdater(item)
 
       if (autoUpdateProfileOnStart) {
@@ -138,7 +142,11 @@ export async function initProfileUpdater(): Promise<void> {
 
   await auditPluginProfileVault(currentItem)
 
-  if (currentItem?.type === 'remote' && currentItem.autoUpdate && currentItem.interval) {
+  if (
+    (currentItem?.type === 'remote' || currentItem?.type === 'mui') &&
+    currentItem.autoUpdate &&
+    currentItem.interval
+  ) {
     const currentId = currentItem.id
     await addProfileUpdater(currentItem)
 

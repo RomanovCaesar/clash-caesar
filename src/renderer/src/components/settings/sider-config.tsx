@@ -20,7 +20,8 @@ const titleMap: Record<string, string> = {
   logCardStatus: 'sider.cards.logs',
   substoreCardStatus: 'sider.cards.substore',
   networkCardStatus: 'sider.cards.network',
-  usageCardStatus: 'sider.cards.traffic'
+  usageCardStatus: 'sider.cards.traffic',
+  muiNetworkCardStatus: 'sider.cards.muiNetwork'
 }
 
 const sizeMap: Record<string, string> = {
@@ -48,7 +49,8 @@ const SiderConfig: FC = () => {
     logCardStatus: appConfig?.logCardStatus || 'col-span-1',
     substoreCardStatus: appConfig?.substoreCardStatus || 'col-span-1',
     networkCardStatus: appConfig?.networkCardStatus || 'col-span-1',
-    usageCardStatus: appConfig?.usageCardStatus || 'col-span-1'
+    usageCardStatus: appConfig?.usageCardStatus || 'col-span-1',
+    muiNetworkCardStatus: appConfig?.muiNetworkCardStatus || 'col-span-1'
   }
 
   const cardStatusEntries = Object.entries(cardStatus)

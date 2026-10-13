@@ -483,6 +483,9 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
     substore: item.substore || false,
     interval: item.interval || 0,
     subTemplate: item.subTemplate,
+    muiNetworkId: item.muiNetworkId,
+    muiSource: item.muiSource,
+    muiUsername: item.muiUsername,
     useProxy: item.useProxy || false,
     allowFixedInterval: item.allowFixedInterval || false,
     autoUpdate: item.autoUpdate ?? true,
@@ -496,6 +499,32 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
   // Local
   if (newItem.type === 'local') {
     await setProfileStr(id, item.file || '')
+    return newItem
+  }
+
+  // m-ui 联机网络：经设备证书签名请求拉取，网络里任意面板可达即可
+  if (newItem.type === 'mui') {
+    if (!newItem.muiNetworkId || !newItem.muiSource || !newItem.muiUsername) {
+      throw new Error('Incomplete m-ui subscription')
+    }
+    const { fetchMuiSubscription } = await import('../resolve/muiNetwork')
+    const { data, headers } = await fetchMuiSubscription(
+      newItem.muiNetworkId,
+      newItem.muiSource,
+      newItem.muiUsername
+    )
+    if (headers['profile-update-interval'] && !item.allowFixedInterval) {
+      const hours = Number(headers['profile-update-interval'])
+      if (Number.isFinite(hours) && hours > 0) {
+        newItem.interval = Math.min(Math.ceil(hours * 60), MAX_PROFILE_INTERVAL_MINUTES)
+      }
+    }
+    if (headers['subscription-userinfo']) {
+      newItem.extra = parseSubinfo(headers['subscription-userinfo'])
+    }
+    await validateProfileCandidate(newItem, data)
+    await setProfileStr(id, data)
+    await profileLogger.info(`m-ui profile saved id=${id} name=${newItem.name}`)
     return newItem
   }
 

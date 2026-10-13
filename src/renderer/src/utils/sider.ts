@@ -10,6 +10,7 @@ export const SIDER_CARD_ROUTES: Record<SiderCardKey, string> = {
   rule: '/rules',
   resource: '/resources',
   subTemplate: '/sub-template',
+  muiNetwork: '/mui-network',
   connection: '/connections',
   mihomo: '/mihomo',
   dns: '/dns',

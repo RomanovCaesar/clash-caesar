@@ -296,7 +296,7 @@ const ProfileItem: React.FC<Props> = (props) => {
                 {info?.name}
               </h3>
               <div className="flex">
-                {(info.type === 'remote' || info.type === 'plugin') && (
+                {(info.type === 'remote' || info.type === 'plugin' || info.type === 'mui') && (
                   <Tooltip placement="left" content={dayjs(info.updated).fromNow()}>
                     <Button
                       isIconOnly
@@ -307,7 +307,8 @@ const ProfileItem: React.FC<Props> = (props) => {
                       onPress={async () => {
                         try {
                           setUpdating(true)
-                          if (info.type === 'remote') await addProfileItem(info)
+                          if (info.type === 'remote' || info.type === 'mui')
+                            await addProfileItem(info)
                           else if (info.pluginId) await updatePluginProfile(info.pluginId, true)
                         } finally {
                           setUpdating(false)
@@ -346,7 +347,7 @@ const ProfileItem: React.FC<Props> = (props) => {
                 </Dropdown>
               </div>
             </div>
-            {info.type === 'remote' && extra && (
+            {(info.type === 'remote' || info.type === 'mui') && extra && (
               <div
                 className={`mt-2 flex justify-between ${isCurrent ? 'text-primary-foreground' : 'text-foreground'}`}
               >
@@ -380,7 +381,7 @@ const ProfileItem: React.FC<Props> = (props) => {
             )}
           </CardBody>
           <CardFooter className="pt-0">
-            {info.type === 'remote' && !extra && (
+            {(info.type === 'remote' || info.type === 'mui') && !extra && (
               <div
                 className={`w-full mt-2 flex justify-between ${isCurrent ? 'text-primary-foreground' : 'text-foreground'}`}
               >

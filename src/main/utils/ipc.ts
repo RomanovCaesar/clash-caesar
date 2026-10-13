@@ -112,6 +112,15 @@ import { closeMainWindow, mainWindow, showMainWindow, triggerMainWindow } from '
 import { subStoreCollections, subStoreSubs } from '../core/subStoreApi'
 import { exportGistAgeSecretKey, generateGistAgeKeyPair, getGistUrl } from '../resolve/gistApi'
 import { getNodeGeo, getNodeGeoStatus, refreshNodeGeo } from '../resolve/nodeGeo'
+import {
+  importMuiNetworkFile,
+  importMuiSubscription,
+  listMuiNetworks,
+  loginMuiNetwork,
+  refreshMuiNetwork,
+  removeMuiNetwork,
+  setMuiUsername
+} from '../resolve/muiNetwork'
 import { startMonitor } from '../resolve/trafficMonitor'
 import { closeFloatingWindow, showContextMenu, showFloatingWindow } from '../resolve/floatingWindow'
 import { addProfileUpdater, removeProfileUpdater } from '../core/profileUpdater'
@@ -355,6 +364,14 @@ const asyncHandlers: Record<string, AsyncFn> = {
   getNodeGeo,
   getNodeGeoStatus,
   refreshNodeGeo,
+  // m-ui network
+  listMuiNetworks,
+  importMuiNetworkFile,
+  loginMuiNetwork,
+  refreshMuiNetwork,
+  setMuiUsername,
+  removeMuiNetwork,
+  importMuiSubscription,
   getImageDataURL,
   readImageFileDataURL,
   getIconDataURL,

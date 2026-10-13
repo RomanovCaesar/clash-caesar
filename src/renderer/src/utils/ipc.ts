@@ -193,6 +193,13 @@ interface IpcApi {
   getNodeGeo: () => Promise<Record<string, INodeGeo>>
   getNodeGeoStatus: () => Promise<INodeGeoStatus>
   refreshNodeGeo: (force?: boolean) => Promise<void>
+  listMuiNetworks: () => Promise<IMuiNetwork[]>
+  importMuiNetworkFile: (content: string) => Promise<IMuiNetwork>
+  loginMuiNetwork: (id: string) => Promise<IMuiNetwork>
+  refreshMuiNetwork: (id: string) => Promise<IMuiNetwork>
+  setMuiUsername: (id: string, username: string) => Promise<IMuiNetwork>
+  removeMuiNetwork: (id: string) => Promise<void>
+  importMuiSubscription: (networkId: string, source: string, name: string) => Promise<void>
   getImageDataURL: (url: string) => Promise<string>
   relaunchApp: () => Promise<void>
   quitApp: () => Promise<void>
@@ -361,6 +368,13 @@ export const {
   getNodeGeo,
   getNodeGeoStatus,
   refreshNodeGeo,
+  listMuiNetworks,
+  importMuiNetworkFile,
+  loginMuiNetwork,
+  refreshMuiNetwork,
+  setMuiUsername,
+  removeMuiNetwork,
+  importMuiSubscription,
   getImageDataURL,
   relaunchApp,
   quitApp

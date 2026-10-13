@@ -31,6 +31,7 @@ export const DEFAULT_SIDER_ORDER: SiderCardKey[] = [
   'rule',
   'resource',
   'subTemplate',
+  'muiNetwork',
   'connection',
   'mihomo',
   'dns',

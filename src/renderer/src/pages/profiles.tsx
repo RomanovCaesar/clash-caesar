@@ -309,12 +309,12 @@ const Profiles: React.FC = () => {
               setUpdating(true)
               for (const item of items) {
                 if (item.id === current) continue
-                if (item.type === 'remote') await addProfileItem(item)
+                if (item.type === 'remote' || item.type === 'mui') await addProfileItem(item)
                 else if (item.type === 'plugin' && item.pluginId)
                   await updatePluginProfile(item.pluginId, true)
               }
               const currentItem = items.find((item) => item.id === current)
-              if (currentItem && currentItem.type === 'remote') {
+              if (currentItem && (currentItem.type === 'remote' || currentItem.type === 'mui')) {
                 await addProfileItem(currentItem)
               } else if (currentItem?.type === 'plugin' && currentItem.pluginId) {
                 await updatePluginProfile(currentItem.pluginId, true)

@@ -10,6 +10,7 @@ type SiderCardKey =
   | 'rule'
   | 'resource'
   | 'subTemplate'
+  | 'muiNetwork'
   | 'connection'
   | 'mihomo'
   | 'dns'
@@ -288,6 +289,39 @@ interface INodeGeo {
   error?: string
 }
 
+// m-ui 联机网络里的一个面板（设备视角）
+interface IMuiNode {
+  id: string
+  publicKey: string
+  name: string
+  endpoint: string
+  revision: number
+  // 联机网络里的在线状态（面板之间的心跳，由能连上的面板报告）
+  meshOnline: boolean
+  meshLastSeen?: number
+  // 本机能否直接连上这个面板，以及最近一次的延迟
+  reachable?: boolean
+  latency?: number
+  checkedAt?: number
+  error?: string
+}
+
+// 一个 m-ui 联机网络（设备视角，不含设备私钥和证书）
+interface IMuiNetwork {
+  id: string
+  name: string
+  loginUrl: string
+  nodes: IMuiNode[]
+  usernames: string[]
+  username?: string
+  deviceId?: string
+  certExpiresAt?: number
+  loggedIn: boolean
+  needsLogin?: boolean
+  lastError?: string
+  updatedAt?: number
+}
+
 interface INodeGeoStatus {
   running: boolean
   done: number
@@ -351,6 +385,7 @@ interface IAppConfig {
   sysproxyCardStatus?: CardStatus
   tunCardStatus?: CardStatus
   usageCardStatus?: CardStatus
+  muiNetworkCardStatus?: CardStatus
   githubToken?: string
   gistAgeEncrypt?: boolean
   gistAgeRecipient?: string
@@ -622,7 +657,7 @@ interface ISubscriptionUserInfo {
 
 interface IProfileItem {
   id: string
-  type: 'remote' | 'local' | 'plugin'
+  type: 'remote' | 'local' | 'plugin' | 'mui'
   name: string
   url?: string // remote
   file?: string // local
@@ -641,6 +676,11 @@ interface IProfileItem {
   ageSecretKey?: string
   updateTimeout?: number
   pluginId?: string
+  // type 为 'mui' 时：经 m-ui 联机网络拉取的订阅
+  muiNetworkId?: string
+  // 'merged' 为融合订阅，否则为面板 ID
+  muiSource?: string
+  muiUsername?: string
 }
 
 interface ISubStoreSub {

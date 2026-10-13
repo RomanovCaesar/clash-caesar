@@ -8,6 +8,7 @@ import {
   Mihomo,
   NetworkPageComponent,
   SubTemplate,
+  MuiNetwork,
   Profiles,
   Proxies,
   Resources,
@@ -78,6 +79,10 @@ const routes = [
   {
     path: '/sub-template',
     element: <SubTemplate />
+  },
+  {
+    path: '/mui-network',
+    element: <MuiNetwork />
   },
   {
     path: '/profiles',

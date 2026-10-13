@@ -4,6 +4,7 @@ import { createPreloadablePage } from './preloadable-page'
 
 const NetworkPage = createPreloadablePage(() => import('@renderer/pages/network'))
 const SubTemplatePage = createPreloadablePage(() => import('@renderer/pages/sub-template'))
+const MuiNetworkPage = createPreloadablePage(() => import('@renderer/pages/mui-network'))
 const ProxiesPage = createPreloadablePage(() => import('@renderer/pages/proxies'))
 const RulesPage = createPreloadablePage(() => import('@renderer/pages/rules'))
 const SettingsPage = createPreloadablePage(() => import('@renderer/pages/settings'))
@@ -21,6 +22,7 @@ const TrafficPage = createPreloadablePage(() => import('@renderer/pages/traffic'
 
 export const NetworkPageComponent = NetworkPage.Page
 export const SubTemplate = SubTemplatePage.Page
+export const MuiNetwork = MuiNetworkPage.Page
 export const Proxies = ProxiesPage.Page
 export const Rules = RulesPage.Page
 export const Settings = SettingsPage.Page
@@ -51,6 +53,7 @@ const remainingPageLoaders: Array<() => Promise<unknown>> = [
   SnifferPage.preload,
   ResourcesPage.preload,
   SubTemplatePage.preload,
+  MuiNetworkPage.preload,
   LogsPage.preload,
   SubStorePage.preload,
   NetworkPage.preload,

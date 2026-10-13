@@ -19,6 +19,7 @@ import RuleCard from '@renderer/components/sider/rule-card'
 import DNSCard from '@renderer/components/sider/dns-card'
 import SniffCard from '@renderer/components/sider/sniff-card'
 import SubTemplateCard from '@renderer/components/sider/sub-template-card'
+import MuiNetworkCard from '@renderer/components/sider/mui-network-card'
 import ConnCard from '@renderer/components/sider/conn-card'
 import LogCard from '@renderer/components/sider/log-card'
 import MihomoCoreCard from '@renderer/components/sider/mihomo-core-card'
@@ -44,6 +45,7 @@ const componentMap: Record<SiderCardKey, React.FC<{ iconOnly?: boolean }>> = {
   rule: RuleCard,
   resource: ResourceCard,
   subTemplate: SubTemplateCard,
+  muiNetwork: MuiNetworkCard,
   substore: SubStoreCard,
   network: NetworkCard,
   usage: UsageCard
