@@ -14,7 +14,8 @@ import {
   countryNumericId,
   countryOfRegion,
   isNodeMember,
-  regionKeyOf,
+  isNodeDown,
+  regionKeyOfNode,
   regionLabel,
   regionPoint,
   UNKNOWN_REGION
@@ -73,15 +74,21 @@ const NodeMap: React.FC<Props> = (props) => {
     const map = new Map<string, string[]>()
     target?.all.forEach((proxy) => {
       if (!isNodeMember(proxy)) return
-      const key = regionKeyOf(geo[proxy.name])
+      const key = regionKeyOfNode(geo, proxy)
       map.set(key, [...(map.get(key) ?? []), proxy.name])
     })
     return map
   }, [target, geo])
 
   const nowName = target ? resolveNow(groups, target) : ''
-  const nowGeo = geo[nowName]
-  const nowRegion = regionKeyOf(nowGeo)
+  const nowProxy = useMemo(
+    () => groups.flatMap((g) => g.all).find((p) => p.name === nowName),
+    [groups, nowName]
+  )
+  // 当前节点连不上时不显示缓存里的旧出口
+  const nowDown = isNodeDown(nowProxy)
+  const nowGeo = nowDown ? undefined : geo[nowName]
+  const nowRegion = nowProxy ? regionKeyOfNode(geo, nowProxy) : UNKNOWN_REGION
   const highlighted = useMemo(() => {
     const ids = new Set<string>()
     regions.forEach((_names, key) => {

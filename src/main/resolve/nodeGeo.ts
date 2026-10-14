@@ -221,10 +221,10 @@ async function probe(force: boolean): Promise<void> {
         await mihomoChangeProxy(channel.group, node.name)
         geo[node.name] = { server: node.server, ...(await lookupExit(channel.port, ipinfoToken)) }
       } catch (e) {
+        // 查不到就是位置未知，不沿用上次的结果，否则连不上的节点还挂在旧国家下
         geo[node.name] = {
           server: node.server,
-          country: geo[node.name]?.country ?? '',
-          region: geo[node.name]?.region,
+          country: '',
           updated: Date.now(),
           error: e instanceof Error ? e.message : String(e)
         }

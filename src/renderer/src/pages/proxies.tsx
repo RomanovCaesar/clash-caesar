@@ -46,7 +46,7 @@ import { useNodeGeo } from '@renderer/hooks/use-node-geo'
 import {
   countryOfRegion,
   isNodeMember,
-  regionKeyOf,
+  regionKeyOfNode,
   regionLabel,
   UNKNOWN_REGION
 } from '@renderer/utils/node-geo'
@@ -374,7 +374,7 @@ const Proxies: React.FC = () => {
       const nodes = proxies.filter(isNodeMember)
       const byRegion = new Map<string, ProxyLike[]>()
       nodes.forEach((p) => {
-        const key = regionKeyOf(geo[p.name])
+        const key = regionKeyOfNode(geo, p)
         byRegion.set(key, [...(byRegion.get(key) ?? []), p])
       })
       const onlyUnknown = byRegion.size === 1 && byRegion.has(UNKNOWN_REGION)
@@ -745,7 +745,12 @@ const Proxies: React.FC = () => {
                           })
                         }
                         const now = groups[index].now
-                        toggleRegion(groups[index].name, regionKeyOf(geo[now]), true)
+                        const nowProxy = groups[index].all.find((p) => p.name === now)
+                        toggleRegion(
+                          groups[index].name,
+                          nowProxy ? regionKeyOfNode(geo, nowProxy) : UNKNOWN_REGION,
+                          true
+                        )
                         setPendingScroll({ group: groups[index].name, proxy: now })
                       }}
                     >

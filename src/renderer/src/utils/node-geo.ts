@@ -11,6 +11,20 @@ export function regionKeyOf(geo: INodeGeo | undefined): string {
   return geo.country
 }
 
+// 最近一次延迟测试超时的节点连不上，之前查到的出口位置已无法确认
+export function isNodeDown(proxy: { history?: IMihomoHistory[] } | undefined): boolean {
+  const history = proxy?.history
+  return Boolean(history?.length) && history?.[history.length - 1].delay === 0
+}
+
+// 节点在列表和地图上的归属：连不上的节点归入"其他"，恢复后自动回到缓存里的位置
+export function regionKeyOfNode(
+  geo: Record<string, INodeGeo>,
+  proxy: { name: string; history?: IMihomoHistory[] }
+): string {
+  return isNodeDown(proxy) ? UNKNOWN_REGION : regionKeyOf(geo[proxy.name])
+}
+
 export function countryOfRegion(key: string): string {
   return key.split('-')[0]
 }
