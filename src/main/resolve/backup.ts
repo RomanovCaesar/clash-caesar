@@ -13,6 +13,7 @@ import {
   dataDir,
   subTemplateConfigPath,
   subTemplateDir,
+  wallpaperDir,
   profileConfigPath,
   profilesDir,
   rulesDir,
@@ -96,6 +97,7 @@ function createBackupZip(): AdmZip {
   const folders = [
     { path: profilesDir(), name: 'profiles' },
     { path: subTemplateDir(), name: 'sub-templates' },
+    { path: wallpaperDir(), name: 'wallpaper' },
     { path: rulesDir(), name: 'rules' },
     { path: subStoreDir(), name: 'substore' }
   ]

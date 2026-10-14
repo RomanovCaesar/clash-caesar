@@ -38,6 +38,7 @@ import SettingItem from '../base/base-setting-item'
 import SettingCard from '../base/base-setting-card'
 import BaseConfirmModal from '../base/base-confirm-modal'
 import TrayIconCropModal from './tray-icon-crop-modal'
+import ThemeSettingItems from './theme-setting-items'
 
 const rasterTrayIconPattern = /\.(png|jpe?g|webp)$/i
 const macTrayIconPattern = /\.(ico|icns)$/i
@@ -693,6 +694,7 @@ const GeneralConfig: React.FC = () => {
             }}
           />
         </SettingItem>
+        <ThemeSettingItems />
         <SettingItem title={t('settings.backgroundColor')} divider>
           <Tabs
             size="sm"

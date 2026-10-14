@@ -21,6 +21,8 @@ type SiderCardKey =
   | 'usage'
 type NetworkInfoCardKey = 'ip' | 'topology' | 'latency'
 type AppTheme = 'system' | 'light' | 'dark'
+
+type UiTheme = 'default' | 'liquidGlass' | 'material'
 type MihomoGroupType = 'Selector' | 'URLTest' | 'Fallback' | 'LoadBalance' | 'Relay'
 type Priority =
   | 'PRIORITY_LOW'
@@ -417,6 +419,13 @@ interface IAppConfig {
   lockSiderCards?: boolean
   siderWidth: number
   appTheme: AppTheme
+  uiTheme?: UiTheme
+  // 数据目录 wallpaper/ 下的文件名，空表示不用壁纸
+  wallpaper?: string
+  // 壁纸模糊半径（px）
+  wallpaperBlur?: number
+  // 壁纸上遮罩的不透明度（%）
+  wallpaperDim?: number
   autoCheckUpdate: boolean
   autoUpdateProfileOnStart: boolean
   silentUpdate: boolean

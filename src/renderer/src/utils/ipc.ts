@@ -200,6 +200,9 @@ interface IpcApi {
   setMuiUsername: (id: string, username: string) => Promise<IMuiNetwork>
   removeMuiNetwork: (id: string) => Promise<void>
   importMuiSubscription: (networkId: string, source: string, name: string) => Promise<void>
+  setWallpaper: (filePath: string) => Promise<string>
+  clearWallpaper: () => Promise<void>
+  getWallpaperDataURL: () => Promise<string | undefined>
   getImageDataURL: (url: string) => Promise<string>
   relaunchApp: () => Promise<void>
   quitApp: () => Promise<void>
@@ -375,6 +378,9 @@ export const {
   setMuiUsername,
   removeMuiNetwork,
   importMuiSubscription,
+  setWallpaper,
+  clearWallpaper,
+  getWallpaperDataURL,
   getImageDataURL,
   relaunchApp,
   quitApp

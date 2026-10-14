@@ -192,3 +192,7 @@ export function rulesDir(): string {
 export function rulePath(id: string): string {
   return path.join(rulesDir(), `${id}.yaml`)
 }
+
+export function wallpaperDir(): string {
+  return path.join(dataDir(), 'wallpaper')
+}

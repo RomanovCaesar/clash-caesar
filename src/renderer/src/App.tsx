@@ -18,6 +18,7 @@ import 'driver.js/dist/driver.css'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
 import AppLogo from './components/base/app-logo'
+import AppBackdrop from './components/base/app-backdrop'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
 
@@ -48,6 +49,8 @@ const App: React.FC = () => {
   const {
     enableTrafficLogger = DEFAULT_ENABLE_TRAFFIC_LOGGER,
     appTheme = 'system',
+    uiTheme = 'default',
+    wallpaper = '',
     useWindowFrame = false,
     siderWidth = 250,
     lastSelectedSiderCard = 'proxy',
@@ -76,18 +79,22 @@ const App: React.FC = () => {
     return unsubscribe
   }, [navigate])
 
+  const seeThrough = Boolean(wallpaper) || uiTheme === 'liquidGlass'
   const setTitlebar = useCallback((): void => {
     if (!useWindowFrame && platform !== 'darwin') {
       const options = { height: 47 } as TitleBarOverlayOptions
       try {
-        options.color = window.getComputedStyle(document.documentElement).backgroundColor
+        // 有壁纸或玻璃主题时窗口按钮区域透明，否则会在右上角留一条纯色块
+        options.color = seeThrough
+          ? '#00000000'
+          : window.getComputedStyle(document.documentElement).backgroundColor
         options.symbolColor = window.getComputedStyle(document.documentElement).color
         setTitleBarOverlay(options)
       } catch {
         // ignore
       }
     }
-  }, [useWindowFrame])
+  }, [useWindowFrame, seeThrough])
 
   useEffect(() => {
     setSiderWidthValue(siderWidth)
@@ -131,7 +138,7 @@ const App: React.FC = () => {
     setNativeTheme(appTheme)
     setTheme(appTheme)
     setTitlebar()
-  }, [appTheme, systemTheme, setTheme, setTitlebar])
+  }, [appTheme, uiTheme, systemTheme, setTheme, setTitlebar])
 
   useEffect(() => {
     window.addEventListener('mouseup', onResizeEnd)
@@ -154,6 +161,7 @@ const App: React.FC = () => {
       }}
       className={`w-full h-screen flex ${resizing ? 'cursor-ew-resize' : ''}`}
     >
+      <AppBackdrop />
       {siderWidthValue === narrowWidth ? (
         <div style={{ width: `${narrowWidth}px` }} className="side h-full flex flex-col">
           <div className="app-drag flex shrink-0 justify-center items-center z-40 bg-transparent h-11.25">

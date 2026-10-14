@@ -121,6 +121,7 @@ import {
   removeMuiNetwork,
   setMuiUsername
 } from '../resolve/muiNetwork'
+import { clearWallpaper, getWallpaperDataURL, setWallpaper } from '../sys/wallpaper'
 import { startMonitor } from '../resolve/trafficMonitor'
 import { closeFloatingWindow, showContextMenu, showFloatingWindow } from '../resolve/floatingWindow'
 import { addProfileUpdater, removeProfileUpdater } from '../core/profileUpdater'
@@ -372,6 +373,10 @@ const asyncHandlers: Record<string, AsyncFn> = {
   setMuiUsername,
   removeMuiNetwork,
   importMuiSubscription,
+  // Wallpaper
+  setWallpaper,
+  clearWallpaper,
+  getWallpaperDataURL,
   getImageDataURL,
   readImageFileDataURL,
   getIconDataURL,

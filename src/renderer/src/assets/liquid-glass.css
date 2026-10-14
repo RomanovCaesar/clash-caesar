@@ -1,0 +1,542 @@
+/*
+ * Liquid Glass 主题（iOS 26 / macOS 26）。
+ *
+ * 照 m-ui 的 web/liquid-*.css 移植并对应到 HeroUI 的结构；材质、尺寸和颜色来自
+ * liquid-glass-webgl（https://github.com/martin65536/liquid-glass-webgl，Apache-2.0，
+ * 见仓库根目录 NOTICE）的 LiquidButton、Dialog、LiquidToggle、LiquidBottomTabs。
+ *
+ * 分工（同 m-ui）：
+ *   - 直接放在壁纸上的侧栏和工具栏胶囊：由 liquid/glass-gl.ts 的 WebGL 层画折射玻璃，
+ *     这里只把它们变成透明的壳；
+ *   - 页面内容卡片：较不透明的安静材质；
+ *   - 浮在内容上的弹窗、菜单：CSS backdrop-filter 材质；
+ *   - 开关、标签栏、按钮：liquid/ 下的控件脚本画透镜和弹簧动画，这里给出几何和材质。
+ *
+ * 规则不在 @layer 里，能盖过 HeroUI / Tailwind 的工具类。
+ */
+
+html[data-ui-theme='liquid-glass'] {
+  --heroui-radius-small: 8px;
+  --heroui-radius-medium: 12px;
+  --heroui-radius-large: 18px;
+  /* Apple System Blue（参考实现的强调色 #0088FF / #0091FF） */
+  --heroui-primary: 208 100% 50%;
+  --heroui-primary-foreground: 0 0% 100%;
+  --heroui-focus: 208 100% 50%;
+  --lg-accent: #0088ff;
+  --lg-destructive: #ff3b30;
+  --lg-surface: rgb(249 251 255 / 0.88);
+  --lg-surface-rim: rgb(255 255 255 / 0.4);
+  --lg-surface-shadow: 0 5px 20px -10px rgb(32 51 80 / 0.18);
+  --lg-tile: rgb(255 255 255 / 0.36);
+  --lg-tile-rim: rgb(255 255 255 / 0.55);
+  --lg-select: rgb(0 0 0 / 0.07);
+  --lg-field: rgb(255 255 255 / 0.72);
+  --lg-field-rim: rgb(60 60 67 / 0.18);
+  --lg-sheet-radius: 28px;
+  --lg-sheet-fill: rgb(250 250 250 / 0.6);
+  --lg-sheet-filter: blur(16px) saturate(1.5) brightness(1.2);
+  --lg-sheet-rim: rgb(255 255 255 / 0.38);
+  --lg-sheet-line: rgb(0 0 0 / 0.08);
+  --lg-scrim: rgb(41 41 58 / 0.23);
+  --lg-menu-fill: rgb(246 246 248 / 0.85);
+  --lg-menu-filter: blur(24px) saturate(1.8);
+  --lg-menu-rim: rgb(255 255 255 / 0.5);
+  --lg-bar-fill: rgb(250 250 250 / 0.62);
+  --lg-bar-filter: blur(18px) saturate(1.8);
+  --lg-text: #1d1d1f;
+  /* 没设壁纸时的背景：Apple 的分组背景灰（同 m-ui 的 --bg），白色卡片和玻璃才看得出来 */
+  --lg-canvas: #f2f2f7;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', sans-serif;
+  letter-spacing: -0.012em;
+}
+
+html.dark[data-ui-theme='liquid-glass'] {
+  --heroui-primary: 206 100% 50%;
+  --heroui-focus: 206 100% 50%;
+  --lg-accent: #0091ff;
+  --lg-destructive: #ff453a;
+  --lg-surface: rgb(26 33 46 / 0.91);
+  --lg-surface-rim: rgb(255 255 255 / 0.09);
+  --lg-surface-shadow: 0 5px 20px -10px rgb(0 0 0 / 0.5);
+  --lg-tile: rgb(255 255 255 / 0.06);
+  --lg-tile-rim: rgb(255 255 255 / 0.1);
+  --lg-select: rgb(255 255 255 / 0.1);
+  --lg-field: rgb(255 255 255 / 0.06);
+  --lg-field-rim: rgb(255 255 255 / 0.12);
+  --lg-sheet-fill: rgb(18 18 18 / 0.4);
+  --lg-sheet-filter: blur(8px) saturate(1.5);
+  --lg-sheet-rim: rgb(255 255 255 / 0.16);
+  --lg-sheet-line: rgb(255 255 255 / 0.08);
+  --lg-scrim: rgb(18 18 18 / 0.56);
+  --lg-menu-fill: rgb(40 40 44 / 0.85);
+  --lg-menu-rim: rgb(255 255 255 / 0.14);
+  --lg-bar-fill: rgb(28 28 30 / 0.62);
+  --lg-text: #f5f5f7;
+  --lg-canvas: #161618;
+}
+
+/* ---------------- 壁纸 ---------------- */
+
+/* WebGL 层（#liquid-glass-canvas）自己画壁纸，没设壁纸时画主题底色 */
+html[data-ui-theme='liquid-glass']:not([data-wallpaper]) {
+  background-color: var(--lg-canvas);
+}
+
+/* 纯色背景上侧栏里的小块更不透明一些，才分得出来 */
+html[data-ui-theme='liquid-glass']:not([data-wallpaper]) .side .bg-content1 {
+  background-color: rgb(255 255 255 / 0.7);
+}
+
+html.dark[data-ui-theme='liquid-glass']:not([data-wallpaper]) .side .bg-content1 {
+  background-color: rgb(255 255 255 / 0.06);
+}
+
+#liquid-glass-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  display: block;
+}
+
+html:not([data-ui-theme='liquid-glass']) #liquid-glass-canvas {
+  display: none;
+}
+
+/* ---------------- 侧栏：悬浮的玻璃面板 ---------------- */
+
+/* 透明边框留出和窗口边缘的间距，WebGL 层按 padding box 画玻璃（内圆角 26px，同 m-ui） */
+html[data-ui-theme='liquid-glass'] .side {
+  border: 12px solid transparent;
+  border-right-width: 0;
+  border-radius: 38px;
+  background: transparent !important;
+  background-clip: padding-box;
+}
+
+html[data-ui-theme='liquid-glass'][data-glass-gl='off'] .side {
+  background: rgb(243 248 255 / 0.47) !important;
+  background-clip: padding-box !important;
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+html.dark[data-ui-theme='liquid-glass'][data-glass-gl='off'] .side {
+  background: rgb(22 31 48 / 0.52) !important;
+}
+
+/* 侧栏和内容之间的分隔线换成两块玻璃之间的空隙 */
+html[data-ui-theme='liquid-glass'] .side ~ [role='separator'] {
+  opacity: 0;
+}
+
+/* 侧栏里的卡片：玻璃上的浅色小块，不再叠一层模糊 */
+html[data-ui-theme='liquid-glass'] .side .bg-content1 {
+  background-color: var(--lg-tile);
+  box-shadow: inset 0 0 0 0.5px var(--lg-tile-rim);
+}
+
+/* 选中的卡片：macOS 侧栏的选中样式，安静的灰色底，图标和文字用强调色 */
+html[data-ui-theme='liquid-glass'] .side .bg-primary:not([data-slot]) {
+  background-color: var(--lg-select);
+  box-shadow: none;
+}
+
+html[data-ui-theme='liquid-glass'] .side .bg-primary:not([data-slot]) .text-primary-foreground {
+  color: var(--lg-accent);
+}
+
+/* ---------------- 工具栏胶囊 ---------------- */
+
+.page-toolbar-glass {
+  display: none;
+}
+
+html[data-ui-theme='liquid-glass'] .page-toolbar {
+  background: transparent !important;
+}
+
+html[data-ui-theme='liquid-glass'] .page-toolbar > [role='separator'] {
+  display: none;
+}
+
+html[data-ui-theme='liquid-glass'] .page-toolbar > .app-drag {
+  padding-left: 26px;
+  padding-right: 20px;
+}
+
+html[data-ui-theme='liquid-glass'] .page-toolbar-glass {
+  display: block;
+  position: absolute;
+  z-index: -1;
+  top: 6px;
+  bottom: 1px;
+  left: 12px;
+  right: calc(var(--titlebar-overlay, 0px) + 12px);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+html[data-ui-theme='liquid-glass'][data-glass-gl='off'] .page-toolbar-glass {
+  background: var(--lg-bar-fill);
+  backdrop-filter: var(--lg-bar-filter);
+}
+
+/* ---------------- 页面内容卡片：安静、较不透明的材质 ---------------- */
+
+html[data-ui-theme='liquid-glass'] .main .bg-content1 {
+  background-color: var(--lg-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--lg-surface-rim),
+    var(--lg-surface-shadow);
+}
+
+html[data-ui-theme='liquid-glass'] .main .bg-background {
+  background-color: transparent;
+}
+
+/* 开关和标签栏的画布比控件大一圈（给放大的透镜留位置），贴着卡片右边时会撑出横向滚动条。
+ * 只纵向滚动的容器不需要横向滚动，裁掉即可 */
+html[data-ui-theme='liquid-glass'] .overflow-y-auto:not(.overflow-x-auto, .overflow-auto) {
+  overflow-x: hidden;
+}
+
+/* ---------------- 输入框和下拉框 ---------------- */
+
+html[data-ui-theme='liquid-glass'] [data-slot='input-wrapper'],
+html[data-ui-theme='liquid-glass'] button[data-slot='trigger'][aria-haspopup='listbox'] {
+  background-color: var(--lg-field);
+  box-shadow: inset 0 0 0 0.5px var(--lg-field-rim);
+  border-radius: 10px;
+}
+
+/* ---------------- 开关（liquid/toggle.ts） ---------------- */
+/* iOS 26 是 64x28 的轨道配 40x24 的旋钮；桌面用 macOS 尺寸，toggle.ts 按高度 / 28 缩放其余长度 */
+
+html[data-ui-theme='liquid-glass'] [data-lg-toggle] {
+  --lt-width: 46px;
+  --lt-height: 20px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: var(--lt-width) !important;
+  min-width: var(--lt-width) !important;
+  height: var(--lt-height) !important;
+  min-height: var(--lt-height) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 999px;
+  background: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+html[data-ui-theme='liquid-glass'] [data-lg-toggle][data-lt-small] {
+  --lt-width: 36px;
+  --lt-height: 16px;
+}
+
+/* 画布比轨道大，放得下 1.5 倍的透镜和阴影；toggle.ts 把 top/left 设成负的边距 */
+html[data-ui-theme='liquid-glass'] [data-lg-toggle] > .liquid-toggle-canvas {
+  position: absolute !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+  display: block !important;
+}
+
+/* HeroUI 自己的旋钮 */
+html[data-ui-theme='liquid-glass'] [data-lg-toggle] > span {
+  display: none !important;
+}
+
+html[data-ui-theme='liquid-glass'] label[data-focus-visible='true'] > [data-lg-toggle] {
+  outline: 2px solid var(--lg-accent);
+  outline-offset: 4px;
+}
+
+/* ---------------- 标签栏 / 分段控件（liquid/tabbar.ts） ---------------- */
+/* 灰色胶囊轨道配淡色指示胶囊，只有指示胶囊盖住的内容用强调色（由透镜画布画在 DOM 文字之上） */
+
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] {
+  --lt-seg-h: 28px;
+  --lt-seg-pad: 2px;
+  position: relative !important;
+  display: flex;
+  align-items: stretch;
+  gap: 0 !important;
+  padding: var(--lt-seg-pad) !important;
+  min-height: 0 !important;
+  height: auto !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+  isolation: isolate;
+  transform-origin: 50% 50%;
+}
+
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > .liquid-tabbar-canvas {
+  position: absolute !important;
+  display: block !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* 指示胶囊本身在文字上方，透镜才能折射文字（真实的 DOM 文字留在下面给焦点和读屏用） */
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > .liquid-tabbar-lens {
+  position: absolute !important;
+  display: block !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > [data-slot='cursor'],
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] [data-slot='cursor'] {
+  display: none !important;
+}
+
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > button {
+  position: relative !important;
+  z-index: 1 !important;
+  /* 偏离 m-ui 的等宽分段：这里有长短悬殊的标签（如 Material Design 3），按内容分宽度 */
+  flex: 1 0 auto;
+  width: auto !important;
+  min-width: 0;
+  min-height: var(--lt-seg-h) !important;
+  height: var(--lt-seg-h) !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline-offset: -2px;
+  color: var(--lg-text) !important;
+  opacity: 1 !important;
+  font-size: 13px;
+  font-weight: 500 !important;
+  line-height: 1;
+  white-space: nowrap;
+  transform: scale(var(--lt-content-scale, 1));
+  transition: none !important;
+}
+
+/* 选中项也保持常规字重：加粗会改变宽度，指示胶囊会在动画中途跳位 */
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > button * {
+  opacity: 1 !important;
+  color: inherit !important;
+  font-weight: 500 !important;
+}
+
+html[data-ui-theme='liquid-glass'] [data-liquid-tabbar] > button[data-focus-visible='true'] {
+  outline: 2px solid var(--lg-accent);
+}
+
+/* ---------------- 按钮（liquid/button.ts 驱动按压） ---------------- */
+/* 材质：着色（强调色 / 红色玻璃，白字）、iOS gray 填充、透明按钮；都带默认边缘高光。
+ * 按压光晕画在额外的背景层上，由 --lb-* 变量驱动（白色 8% 整体 + 手指处 15% 径向光晕）。 */
+
+html[data-ui-theme='liquid-glass']
+  button:not(
+    [role='tab'],
+    [role='switch'],
+    [role='menuitem'],
+    [role='menuitemcheckbox'],
+    [role='menuitemradio'],
+    [role='option'],
+    [data-slot='trigger'],
+    [data-slot='close-button']
+  ) {
+  --lb-fill: transparent;
+  --lb-rim: transparent;
+  --lb-shadow: none;
+  border-radius: 999px;
+  background:
+    radial-gradient(
+        circle var(--lb-r, 40px) at var(--lb-gx, 50%) var(--lb-gy, 50%),
+        rgb(255 255 255 / calc(0.15 * var(--lb-p, 0))),
+        transparent
+      )
+      padding-box,
+    linear-gradient(
+        rgb(255 255 255 / calc(0.08 * var(--lb-p, 0))),
+        rgb(255 255 255 / calc(0.08 * var(--lb-p, 0)))
+      )
+      padding-box,
+    linear-gradient(var(--lb-fill), var(--lb-fill)) padding-box,
+    linear-gradient(135deg, var(--lb-rim), transparent 35%, transparent 65%, var(--lb-rim))
+      border-box !important;
+  box-shadow: var(--lb-shadow) !important;
+}
+
+/* 弹簧按压取代 HeroUI 的按下缩小 */
+html[data-ui-theme='liquid-glass'] button[data-pressed='true'] {
+  transform: none !important;
+}
+
+/* 透明按钮悬停时给一点 iOS gray */
+html[data-ui-theme='liquid-glass'] button.bg-transparent[data-hover='true'] {
+  --lb-fill: rgb(118 118 128 / 0.12);
+}
+
+/* iOS gray：HeroUI 的 flat / solid 默认色 */
+html[data-ui-theme='liquid-glass']
+  button:is([class~='bg-default/40'], .bg-default, .border-medium) {
+  --lb-fill: rgb(118 118 128 / 0.12);
+  --lb-rim: rgb(255 255 255 / 0.5);
+  border-color: transparent !important;
+}
+
+html[data-ui-theme='liquid-glass']
+  button:is([class~='bg-default/40'], .bg-default, .border-medium)[data-hover='true'] {
+  --lb-fill: rgb(118 118 128 / 0.18);
+}
+
+/* 着色：强调色玻璃 */
+html[data-ui-theme='liquid-glass'] button.bg-primary {
+  --lb-fill: var(--lg-accent);
+  --lb-rim: rgb(255 255 255 / 0.5);
+  --lb-shadow: 0 4px 24px rgb(0 0 0 / 0.1);
+  color: #fff !important;
+}
+
+/* 着色：危险操作 */
+html[data-ui-theme='liquid-glass'] button.bg-danger {
+  --lb-fill: var(--lg-destructive);
+  --lb-rim: rgb(255 255 255 / 0.5);
+  --lb-shadow: 0 4px 24px rgb(0 0 0 / 0.1);
+  color: #fff !important;
+}
+
+html[data-ui-theme='liquid-glass'] button:is([class~='bg-primary/20'], [class~='bg-danger/20']) {
+  --lb-rim: rgb(255 255 255 / 0.5);
+}
+
+html[data-ui-theme='liquid-glass'] button:is([class~='bg-primary/20']) {
+  --lb-fill: rgb(0 136 255 / 0.14);
+}
+
+html[data-ui-theme='liquid-glass'] button:is([class~='bg-danger/20']) {
+  --lb-fill: rgb(255 59 48 / 0.14);
+}
+
+html.dark[data-ui-theme='liquid-glass']
+  button:is([class~='bg-default/40'], .bg-default, .border-medium) {
+  --lb-fill: rgb(118 118 128 / 0.24);
+  --lb-rim: rgb(255 255 255 / 0.28);
+}
+
+html.dark[data-ui-theme='liquid-glass']
+  button:is([class~='bg-default/40'], .bg-default, .border-medium)[data-hover='true'] {
+  --lb-fill: rgb(118 118 128 / 0.32);
+}
+
+html.dark[data-ui-theme='liquid-glass'] button.bg-transparent[data-hover='true'] {
+  --lb-fill: rgb(118 118 128 / 0.24);
+}
+
+html.dark[data-ui-theme='liquid-glass'] button:is(.bg-primary, .bg-danger) {
+  --lb-rim: rgb(255 255 255 / 0.28);
+}
+
+/* ---------------- 弹窗 ---------------- */
+/* DialogContent：纯色压暗的遮罩（不模糊），玻璃卡片 */
+
+/* 应用里的弹窗多用自定义的 bg-overlay/30 + backdrop-blur 遮罩 */
+html[data-ui-theme='liquid-glass'] [data-slot='backdrop'],
+html[data-ui-theme='liquid-glass'] [class~='bg-overlay/30'] {
+  background: var(--lg-scrim) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-ui-theme='liquid-glass'] section[role='dialog'] {
+  border: 0.5px solid var(--lg-sheet-rim) !important;
+  border-radius: var(--lg-sheet-radius) !important;
+  background: var(--lg-sheet-fill) !important;
+  backdrop-filter: var(--lg-sheet-filter) !important;
+  box-shadow:
+    0 4px 24px rgb(0 0 0 / 0.1),
+    0 24px 64px -24px rgb(0 0 0 / 0.28) !important;
+}
+
+html[data-ui-theme='liquid-glass']
+  section[role='dialog']
+  :is([data-slot='header'], [data-slot='footer']) {
+  background: transparent !important;
+  border-color: var(--lg-sheet-line) !important;
+}
+
+/* 弹窗里的卡片是同一块玻璃上的分组，不再叠一层 */
+html[data-ui-theme='liquid-glass'] section[role='dialog'] .bg-content1 {
+  background-color: rgb(255 255 255 / 0.4);
+}
+
+html.dark[data-ui-theme='liquid-glass'] section[role='dialog'] .bg-content1 {
+  background-color: rgb(255 255 255 / 0.05);
+}
+
+/* ---------------- 菜单、下拉列表、气泡 ---------------- */
+/* macOS 26：较不透明的磨砂面板，14px 圆角，悬停项是蓝色圆角高亮配白字 */
+
+html[data-ui-theme='liquid-glass'] [data-slot='content']:is(.bg-content1, [class*='bg-content1']) {
+  border: 0.5px solid var(--lg-menu-rim) !important;
+  border-radius: 14px !important;
+  background: var(--lg-menu-fill) !important;
+  backdrop-filter: var(--lg-menu-filter) !important;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.08),
+    0 10px 30px rgb(0 0 0 / 0.16) !important;
+}
+
+html[data-ui-theme='liquid-glass']
+  :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']) {
+  border-radius: 8px !important;
+}
+
+html[data-ui-theme='liquid-glass']
+  :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [data-hover='true'],
+    [data-focus-visible='true']
+  ) {
+  background: var(--lg-accent) !important;
+  color: #fff !important;
+}
+
+html[data-ui-theme='liquid-glass']
+  :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], [role='option']):is(
+    [data-hover='true'],
+    [data-focus-visible='true']
+  )
+  * {
+  color: inherit !important;
+}
+
+/* ---------------- 其它 ---------------- */
+
+html[data-ui-theme='liquid-glass'] ::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: rgb(0 0 0 / 0.2);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+html.dark[data-ui-theme='liquid-glass'] ::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-theme='liquid-glass'] button {
+    scale: none !important;
+    translate: none !important;
+  }
+}

@@ -1,0 +1,178 @@
+/*
+ * 界面主题与壁纸。<html> 上的 data-ui-theme 选主题（default / liquid-glass / material），
+ * data-wallpaper 表示设置了壁纸。这里的规则不在 @layer 里，能覆盖 HeroUI / Tailwind 的工具类。
+ * HeroUI 的颜色类把透明度写死成 1（hsl(var(--x) / 1)），半透明的表面只能在这里逐个类覆盖。
+ */
+
+/* ---------- 壁纸（所有主题） ---------- */
+
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.app-backdrop-image {
+  position: absolute;
+  /* 模糊会让边缘透出底色，向外扩一圈 */
+  inset: calc(var(--wallpaper-blur, 0px) * -2);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: blur(var(--wallpaper-blur, 0px));
+}
+
+.app-backdrop-dim {
+  position: absolute;
+  inset: 0;
+  background-color: hsl(var(--heroui-background) / var(--wallpaper-dim, 0.45));
+}
+
+html[data-wallpaper]:not([data-ui-theme='liquid-glass']) .bg-background {
+  background-color: hsl(var(--heroui-background) / 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+html[data-wallpaper]:not([data-ui-theme='liquid-glass']) .side .bg-content1,
+html[data-wallpaper]:not([data-ui-theme='liquid-glass']) .main .bg-content1 {
+  background-color: hsl(var(--heroui-content1) / 0.8);
+  backdrop-filter: blur(12px);
+}
+
+html[data-wallpaper]:not([data-ui-theme='liquid-glass']) .main .bg-content2 {
+  background-color: hsl(var(--heroui-content2) / 0.75);
+}
+
+/* Liquid Glass 主题在 liquid-glass.css（WebGL 层在 liquid/ 下） */
+
+/* ---------- Material Design 3 ---------- */
+/* 配色来自 Material Theme Builder 的蓝色方案（种子色 #415F91），表面用色调层级区分而不是阴影 */
+
+html[data-ui-theme='material'] {
+  --heroui-radius-small: 8px;
+  --heroui-radius-medium: 12px;
+  --heroui-radius-large: 16px;
+  --heroui-box-shadow-small: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --heroui-box-shadow-medium: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --heroui-box-shadow-large: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  font-family:
+    Roboto,
+    'Segoe UI Variable Text',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    'Noto Sans',
+    sans-serif;
+}
+
+html.light[data-ui-theme='material'] {
+  --heroui-background: 240 100% 98.8%;
+  --heroui-foreground: 214.3 12.3% 11.2%;
+  --heroui-content1: 240 41.2% 96.7%;
+  --heroui-content1-foreground: 214.3 12.3% 11.2%;
+  --heroui-content2: 240 24.1% 94.3%;
+  --heroui-content2-foreground: 214.3 12.3% 11.2%;
+  --heroui-content3: 231.4 17.1% 92%;
+  --heroui-content3-foreground: 214.3 12.3% 11.2%;
+  --heroui-content4: 240 13.7% 90%;
+  --heroui-content4-foreground: 214.3 12.3% 11.2%;
+  --heroui-default-100: 240 13.7% 90%;
+  --heroui-default-200: 230 11.3% 79.2%;
+  --heroui-divider: 230 11.3% 79.2%;
+  --heroui-focus: 217.5 38.1% 41.2%;
+  --heroui-primary: 217.5 38.1% 41.2%;
+  --heroui-primary-foreground: 0 0% 100%;
+  --heroui-primary-50: 221 100% 97%;
+  --heroui-primary-100: 221 100% 92%;
+  --heroui-primary-200: 220 70% 84%;
+  --heroui-primary-300: 219 55% 72%;
+  --heroui-primary-400: 218 45% 58%;
+  --heroui-primary-500: 217.5 38.1% 41.2%;
+  --heroui-primary-600: 216.5 49.7% 31.2%;
+  --heroui-primary-700: 215 60% 24%;
+  --heroui-primary-800: 214 70% 17%;
+  --heroui-primary-900: 213 80% 11%;
+  --heroui-danger: 0 75.5% 41.6%;
+  --md-secondary-container: 224.5 72.1% 91.6%;
+  --md-on-secondary-container: 220 17.9% 29.6%;
+}
+
+html.dark[data-ui-theme='material'] {
+  --heroui-background: 222.9 17.1% 8%;
+  --heroui-foreground: 240 13.7% 90%;
+  --heroui-content1: 214.3 12.3% 11.2%;
+  --heroui-content1-foreground: 240 13.7% 90%;
+  --heroui-content2: 214.3 10.8% 12.7%;
+  --heroui-content2-foreground: 240 13.7% 90%;
+  --heroui-content3: 222.9 8% 17.1%;
+  --heroui-content3-foreground: 240 13.7% 90%;
+  --heroui-content4: 222.9 6.4% 21.4%;
+  --heroui-content4-foreground: 240 13.7% 90%;
+  --heroui-default-100: 222.9 6.4% 21.4%;
+  --heroui-default-200: 222 6.8% 28.6%;
+  --heroui-divider: 222 6.8% 28.6%;
+  --heroui-focus: 219.5 100% 83.3%;
+  --heroui-primary: 219.5 100% 83.3%;
+  --heroui-primary-foreground: 213.2 81% 20.6%;
+  --heroui-primary-50: 213 80% 11%;
+  --heroui-primary-100: 214 70% 17%;
+  --heroui-primary-200: 215 60% 24%;
+  --heroui-primary-300: 216.5 49.7% 31.2%;
+  --heroui-primary-400: 218 60% 60%;
+  --heroui-primary-500: 219.5 100% 83.3%;
+  --heroui-primary-600: 220 100% 87%;
+  --heroui-primary-700: 221 100% 92%;
+  --heroui-primary-800: 221 100% 95%;
+  --heroui-primary-900: 221 100% 97%;
+  --heroui-danger: 6.4 100% 83.5%;
+  --md-secondary-container: 220 17.9% 29.6%;
+  --md-on-secondary-container: 224.5 72.1% 91.6%;
+}
+
+/* 页面里的卡片用色调区分层级，不要阴影；浮层（菜单、弹窗）保留 MD3 的阴影 */
+html[data-ui-theme='material'] .side,
+html[data-ui-theme='material'] .main {
+  --heroui-box-shadow-small: none;
+  --heroui-box-shadow-medium: none;
+  --heroui-box-shadow-large: none;
+}
+
+html[data-ui-theme='material'] .side {
+  background-color: hsl(var(--heroui-content1));
+}
+
+html[data-wallpaper][data-ui-theme='material'] .side {
+  background-color: hsl(var(--heroui-content1) / 0.6);
+}
+
+/* 侧栏选中项：MD3 导航抽屉的 secondary container 指示器 */
+html[data-ui-theme='material'] .side .bg-primary:not([data-slot='cursor']) {
+  background-color: hsl(var(--md-secondary-container));
+}
+
+html[data-ui-theme='material']
+  .side
+  .bg-primary:not([data-slot='cursor'])
+  .text-primary-foreground {
+  color: hsl(var(--md-on-secondary-container));
+}
+
+html[data-ui-theme='material'] .side .bg-content1 {
+  background-color: hsl(var(--heroui-content2));
+}
+
+/* 按钮、页签做成 MD3 的胶囊形；对话框是 28px 大圆角 */
+html[data-ui-theme='material'] button.rounded-small,
+html[data-ui-theme='material'] button.rounded-medium,
+html[data-ui-theme='material'] button.rounded-large,
+html[data-ui-theme='material'] [data-slot='tabList'],
+html[data-ui-theme='material'] [data-slot='cursor'] {
+  border-radius: 9999px;
+}
+
+html[data-ui-theme='material'] section[role='dialog'] {
+  border-radius: 28px;
+  background-color: hsl(var(--heroui-content3));
+}

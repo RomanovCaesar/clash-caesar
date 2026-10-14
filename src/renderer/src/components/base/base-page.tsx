@@ -45,7 +45,12 @@ const BasePage = forwardRef<HTMLDivElement, Props>((props, ref) => {
 
   return (
     <div ref={contentRef} className="w-full h-full">
-      <div className="sticky top-0 z-40 h-12.25 w-full bg-background">
+      <div
+        className="page-toolbar sticky top-0 z-40 h-12.25 w-full bg-background"
+        style={{ '--titlebar-overlay': `${overlayWidth}px` } as React.CSSProperties}
+      >
+        {/* Liquid Glass 主题下由 WebGL 层画成工具栏胶囊，其它主题不显示 */}
+        <div className="page-toolbar-glass" aria-hidden />
         <div className="app-drag p-2 flex justify-between h-12">
           <div className="title h-full text-lg leading-8">{props.title}</div>
           <div style={{ marginRight: overlayWidth }} className="header flex gap-1 h-full">
@@ -74,7 +79,7 @@ const BasePage = forwardRef<HTMLDivElement, Props>((props, ref) => {
 
         <Divider />
       </div>
-      <div className="content h-[calc(100vh-49px)] overflow-y-auto custom-scrollbar">
+      <div className="page-content content h-[calc(100vh-49px)] overflow-y-auto custom-scrollbar">
         {props.children}
       </div>
     </div>

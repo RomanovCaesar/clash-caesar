@@ -31,6 +31,8 @@ Clash Caesar 是一个开源的 Mihomo（Clash Meta）图形客户端，基于 [
 - 订阅模版：把订阅的分组和分流规则换成统一的一套，节点保持不变，订阅文件本身不会被修改；内置与 [m-ui](https://github.com/RomanovCaesar/m-ui) 相同的模版（中国大陆 / 俄罗斯 / 伊朗），也可导入自己的模版或从现有订阅生成
 - 节点地图：自动查询每个节点的出口位置，代理组里的节点按出口国家分组显示，并在世界地图上标出；点击地图即可切换节点
 - 隐私保护：出口 IP 默认只显示前两段，截图分享更安全
+- 三种界面主题：默认、Liquid Glass、Material Design 3；可设置自己的图片作为界面壁纸，并调节模糊和遮罩
+- Liquid Glass 主题移植自 [m-ui](https://github.com/RomanovCaesar/m-ui) 的液态玻璃：WebGL 画出折射、色散和边缘高光的悬浮侧栏与工具栏，开关、分段控件和按钮带 iOS 26 的弹簧动画和按下时的玻璃透镜
 - m-ui 联机网络：导入 [m-ui](https://github.com/RomanovCaesar/m-ui) 面板的插件文件并登录一次，就能接入它的 Multi-control 网络，查看所有面板的在线情况，一键导入任意面板的订阅或融合订阅；能连上任意一个面板就不会断
 - 深度集成 Sub-Store，轻松管理订阅
 - 订阅按 WiFi 网络自动切换
@@ -102,7 +104,7 @@ pnpm run format:check && pnpm run lint:check && pnpm run typecheck && pnpm test
 - 内核升级改由客户端下载并替换，修复了「升级成功却提示失败」以及左右两侧版本号显示不一致的问题
 - 用订阅模版取代了 YAML / JavaScript 覆写
 - 新增节点地图和按出口国家分组显示节点
-- 移除了 Smart 内核、GitHub 下载加速镜像和在线主题库
+- 移除了 Smart 内核、GitHub 下载加速镜像和在线主题库（改为内置的三种主题和自定义壁纸）
 - 独立的应用标识与数据目录（`%APPDATA%\clash-caesar`），可与 Clash Party 同时安装
 - 订阅请求默认 User-Agent 为 `clash.caesar/v<版本> (clash.meta)`
 
@@ -118,6 +120,7 @@ pnpm run format:check && pnpm run lint:check && pnpm run typecheck && pnpm test
 - [Sub-Store](https://github.com/sub-store-org/Sub-Store)：订阅管理
 - [world-atlas](https://github.com/topojson/world-atlas)（[Natural Earth](https://www.naturalearthdata.com) 数据）：世界地图
 - [ipinfo.io](https://ipinfo.io)、[ipip.net](https://www.ipip.net)：IP 位置查询
+- [Liquid Glass WebGL Port](https://github.com/martin65536/liquid-glass-webgl)（Apache-2.0）与 [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)：Liquid Glass 主题的折射、弹簧和控件参数，经 m-ui 移植，署名见 [NOTICE](NOTICE)
 
 ## 许可证
 
