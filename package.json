@@ -1,6 +1,6 @@
 {
   "name": "clash-caesar",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Clash Caesar",
   "type": "module",
   "main": "./out/main/index.js",
