@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { maskIp, parseIpinfo, parseIpipProvince } from '../../shared/nodeGeo'
-import { addNodeGeoProbes, isGeoFresh, isProbeGroupName } from './nodeGeo'
+import { addNodeGeoProbes, isChannelDown, isGeoFresh, isProbeGroupName } from './nodeGeo'
 
 const appConfig = vi.hoisted(() => ({ nodeGeoEnabled: true as boolean | undefined }))
 
@@ -106,11 +106,41 @@ describe('probe channels in the core config', () => {
     })
   })
 
+  // 改设置只会热更新内核、不重新加载配置，内核一直监听最初的端口
+  it('keeps the same probe ports every time the config is generated', async () => {
+    const portsOf = async (): Promise<unknown[]> => {
+      const profile = { 'proxy-groups': [] } as unknown as IMihomoConfig
+      await addNodeGeoProbes(profile)
+      return (
+        (profile as unknown as Record<string, Record<string, unknown>[]>).listeners ?? []
+      ).map((l) => l.port)
+    }
+    const first = await portsOf()
+    expect(first.length).toBeGreaterThan(0)
+    expect(await portsOf()).toEqual(first)
+  })
+
   it('adds nothing when the lookup is turned off', async () => {
     appConfig.nodeGeoEnabled = false
     const profile = { 'proxy-groups': [] } as unknown as IMihomoConfig
     await addNodeGeoProbes(profile)
     expect(profile['proxy-groups']).toEqual([])
     expect((profile as unknown as Record<string, unknown>).listeners).toBeUndefined()
+  })
+})
+
+describe('probe channel failures', () => {
+  it('treats a refused loopback probe port as a channel problem, not a node failure', () => {
+    expect(
+      isChannelDown(
+        Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:50411'), { code: 'ECONNREFUSED' })
+      )
+    ).toBe(true)
+    expect(isChannelDown('connect ECONNREFUSED 127.0.0.1:50412')).toBe(true)
+  })
+
+  it('keeps real node failures', () => {
+    expect(isChannelDown(new Error('Node closed the connection'))).toBe(false)
+    expect(isChannelDown(new Error('ipinfo HTTP 502'))).toBe(false)
   })
 })

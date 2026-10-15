@@ -48,6 +48,9 @@ interface ProbeChannel {
 }
 
 let channels: ProbeChannel[] = []
+// 本次运行固定使用的探测端口。改设置时配置会重新生成，但内核只做热更新、不重新加载配置，
+// 仍然监听最初的端口；每次换新端口会让查询全部打到没人监听的端口上。
+let probePorts: number[] = []
 let cache: Record<string, INodeGeo> | undefined
 let status: INodeGeoStatus = { running: false, done: 0, total: 0 }
 let running: Promise<void> | null = null
@@ -55,6 +58,13 @@ let rerunRequested = false
 let rerunForce = false
 let scheduleTimer: NodeJS.Timeout | null = null
 let notifyTimer: NodeJS.Timeout | null = null
+
+// 连不上本机的探测端口：是 Clash Caesar 和内核之间的问题，不能记成节点查询失败
+export function isChannelDown(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code
+  const message = error instanceof Error ? error.message : String(error)
+  return code === 'ECONNREFUSED' || /ECONNREFUSED 127\.0\.0\.1:/.test(message)
+}
 
 export function isProbeGroupName(name: string): boolean {
   return name.startsWith(PROBE_PREFIX)
@@ -85,8 +95,10 @@ export async function addNodeGeoProbes(profile: IMihomoConfig): Promise<void> {
     channels = []
     return
   }
-  const ports = await Promise.all(Array.from({ length: PROBE_CHANNELS }, getFreePort))
-  const next = ports.map((port, i) => ({ group: `${PROBE_PREFIX}${i}`, port }))
+  if (probePorts.length !== PROBE_CHANNELS) {
+    probePorts = await Promise.all(Array.from({ length: PROBE_CHANNELS }, getFreePort))
+  }
+  const next = probePorts.map((port, i) => ({ group: `${PROBE_PREFIX}${i}`, port }))
   const doc = profile as unknown as Record<string, unknown>
   const groups = Array.isArray(doc['proxy-groups']) ? (doc['proxy-groups'] as unknown[]) : []
   const listeners = Array.isArray(doc.listeners) ? (doc.listeners as unknown[]) : []
@@ -140,6 +152,10 @@ async function loadCache(): Promise<Record<string, INodeGeo>> {
       const parsed = JSON.parse(await readFile(cachePath(), 'utf-8'))
       if (parsed?.version === CACHE_VERSION && parsed.nodes && typeof parsed.nodes === 'object') {
         cache = parsed.nodes as Record<string, INodeGeo>
+        // 丢掉探测通道本身不通时误记的失败（不是节点的问题）
+        for (const [name, geo] of Object.entries(cache)) {
+          if (geo.error && isChannelDown(geo.error)) delete cache[name]
+        }
       }
     } catch (e) {
       logger.warn('Failed to read node geo cache', e)
@@ -214,13 +230,27 @@ async function probe(force: boolean): Promise<void> {
   if (todo.length === 0) return
 
   let next = 0
+  let channelDown = false
   const worker = async (channel: ProbeChannel): Promise<void> => {
-    while (next < todo.length) {
+    while (next < todo.length && !channelDown) {
       const node = todo[next++]
       try {
         await mihomoChangeProxy(channel.group, node.name)
+      } catch (e) {
+        // 内核里没有这个探测分组（还没加载带探测通道的配置），同样不是节点的问题
+        channelDown = true
+        logger.warn(`Probe group ${channel.group} is not available, stopping this run`, e)
+        break
+      }
+      try {
         geo[node.name] = { server: node.server, ...(await lookupExit(channel.port, ipinfoToken)) }
       } catch (e) {
+        if (isChannelDown(e)) {
+          // 内核没在这个端口上监听：停下这一轮，不把节点记成失败，内核下次加载配置后再查
+          channelDown = true
+          logger.warn(`Probe port ${channel.port} is not listening, stopping this run`, e)
+          break
+        }
         // 查不到就是位置未知，不沿用上次的结果，否则连不上的节点还挂在旧国家下
         geo[node.name] = {
           server: node.server,
