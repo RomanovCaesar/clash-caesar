@@ -7,6 +7,7 @@ import path from 'path'
 import { nativeImage } from 'electron'
 import express from 'express'
 import AdmZip from 'adm-zip'
+import { workerSourceWithBrotliGuard } from '../utils/brotliGuard'
 import * as chromeRequest from '../utils/chromeRequest'
 import subStoreIcon from '../../../resources/subStoreIcon.png?asset'
 import { dataDir, mihomoWorkDir, subStoreDir, substoreLogPath } from '../utils/dirs'
@@ -145,7 +146,12 @@ export async function startSubStoreBackendServer(): Promise<void> {
       SUB_STORE_MMDB_COUNTRY_PATH: path.join(mihomoWorkDir(), 'country.mmdb'),
       SUB_STORE_MMDB_ASN_PATH: path.join(mihomoWorkDir(), 'ASN.mmdb')
     }
-    subStoreBackendWorker = new Worker(path.join(mihomoWorkDir(), 'sub-store.bundle.cjs'), {
+    // 以 eval 方式启动：先在 worker 里替换有漏洞的 Brotli 解码器（CVE-2026-111497），再加载 Sub-Store
+    const subStoreSource = workerSourceWithBrotliGuard(
+      path.join(mihomoWorkDir(), 'sub-store.bundle.cjs')
+    )
+    subStoreBackendWorker = new Worker(subStoreSource, {
+      eval: true,
       env: useProxyInSubStore
         ? {
             ...env,

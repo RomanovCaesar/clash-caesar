@@ -27,3 +27,15 @@ modified to render inside individual DOM controls.
 That project is itself a web port of AndroidLiquidGlass by Kyant
 (https://github.com/Kyant0/AndroidLiquidGlass).
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+Brotli
+https://github.com/google/brotli
+Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
+Licensed under the MIT License (https://opensource.org/licenses/MIT)
+
+src/main/utils/brotli/decode.js is the JavaScript Brotli decoder from
+js/decode.js of this project (commit 3499acbb7ac7), with only its trailing
+ES module export removed. It replaces the bundled Node.js Brotli decoder
+while that one is affected by CVE-2026-111497.
+------------------------------------------------------------------------

@@ -211,15 +211,17 @@ async function getNetwork(id: string): Promise<StoredNetwork> {
   return network
 }
 
-function encryptKey(seedB64: string): string {
-  if (!safeStorage.isEncryptionAvailable()) {
+// safeStorage 的同步接口从 Electron 45 起弃用、46 移除；异步接口能解开同步接口加密的旧数据
+async function encryptKey(seedB64: string): Promise<string> {
+  if (!(await safeStorage.isAsyncEncryptionAvailable())) {
     throw new MuiError('unavailable', 'Secure storage is unavailable on this system')
   }
-  return safeStorage.encryptString(seedB64).toString('base64')
+  return (await safeStorage.encryptStringAsync(seedB64)).toString('base64')
 }
 
-function decryptKey(encrypted: string): string {
-  return safeStorage.decryptString(Buffer.from(encrypted, 'base64'))
+async function decryptKey(encrypted: string): Promise<string> {
+  const { result } = await safeStorage.decryptStringAsync(Buffer.from(encrypted, 'base64'))
+  return result
 }
 
 // 把网络文档并入记录：节点按 ID 合并（ID 由公钥派生），名称和地址取 revision 更新的版本；
@@ -459,11 +461,11 @@ async function wireRequest(
 
 // ---- 设备请求 ----
 
-function deviceKeys(network: StoredNetwork): { cert: string; seed: string } {
+async function deviceKeys(network: StoredNetwork): Promise<{ cert: string; seed: string }> {
   if (!network.cert || !network.devicePrivEnc || !network.loggedIn) {
     throw new MuiError('not_logged_in', 'Please sign in to this network first')
   }
-  return { cert: network.cert, seed: decryptKey(network.devicePrivEnc) }
+  return { cert: network.cert, seed: await decryptKey(network.devicePrivEnc) }
 }
 
 interface SignedResult {
@@ -480,7 +482,7 @@ async function signedRequest(
   pathAndQuery: string,
   timeout = REQUEST_TIMEOUT
 ): Promise<SignedResult> {
-  const { cert, seed } = deviceKeys(network)
+  const { cert, seed } = await deviceKeys(network)
   const body = Buffer.alloc(0)
   const timestamp = String(Date.now())
   const nonce = randomBytes(18).toString('base64url')
@@ -617,11 +619,12 @@ export async function loginMuiNetwork(id: string): Promise<IMuiNetwork> {
   }
   const cert = JSON.parse(openEnvelope(result.cert, DOMAIN_CERT, issuerKey).toString('utf8'))
   const doc = verifyNetworkDoc(result.network, trustedKey(network))
+  const devicePrivEnc = await encryptKey(device.privKeyB64)
   return mutate(id, (n) => {
     n.cert = result.cert
     n.deviceId = device.deviceId
     n.devicePub = device.pubKeyB64
-    n.devicePrivEnc = encryptKey(device.privKeyB64)
+    n.devicePrivEnc = devicePrivEnc
     n.certExpiresAt = cert.expiresAt
     n.loggedIn = true
     n.needsLogin = false
@@ -665,7 +668,7 @@ export async function refreshMuiNetwork(id: string): Promise<IMuiNetwork> {
     log.warn('Certificate renewal failed', e)
   }
   const network = await getNetwork(id)
-  deviceKeys(network)
+  await deviceKeys(network)
   const results = await Promise.all(
     network.nodes
       .filter((n) => n.endpoint)

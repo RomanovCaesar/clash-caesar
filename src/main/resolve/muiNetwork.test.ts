@@ -17,7 +17,7 @@ import {
 const dir = vi.hoisted(() => ({ path: '' }))
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0' },
-  safeStorage: { isEncryptionAvailable: () => true },
+  safeStorage: { isAsyncEncryptionAvailable: () => Promise.resolve(true) },
   shell: { openExternal: vi.fn() }
 }))
 vi.mock('../config', () => ({ getControledMihomoConfig: () => Promise.resolve({}) }))

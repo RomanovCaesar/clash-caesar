@@ -38,5 +38,6 @@ export async function writeClipboardText(text: string): Promise<void> {
     return
   }
 
-  clipboard.writeText(text)
+  // Electron 44 起 clipboard 的读写都返回 Promise
+  await clipboard.writeText(text)
 }

@@ -1,3 +1,4 @@
+import './brotliGuardInit'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
