@@ -920,5 +920,16 @@
   "muiNetwork.error.unreachable": "None of the panels in this network can be reached; check your connection",
   "muiNetwork.error.not_found": "This panel has no usable nodes for this username",
   "muiNetwork.error.bad_response": "The panel returned invalid data or the signature check failed",
-  "muiNetwork.error.unavailable": "Secure storage is unavailable, so the device key cannot be saved"
+  "muiNetwork.error.unavailable": "Secure storage is unavailable, so the device key cannot be saved",
+  "deepLink.confirmImport": "Import this subscription?",
+  "deepLink.confirmPlugin": "Install this provider plugin?",
+  "deepLink.name": "Name",
+  "deepLink.address": "Address",
+  "deepLink.trustHint": "This request came from a link opened by a web page or another program. Only import sources you trust: a subscription decides where your traffic is forwarded.",
+  "deepLink.import": "Import",
+  "deepLink.install": "Install",
+  "dns.overseasHint": "All upstream DNS servers are overseas public resolvers and \"Respect Rules\" is off, so these queries go out directly. In mainland China they are usually interfered with: blocked domains fail to resolve and UDP through the proxy (STUN, WebRTC, QUIC, games) stops working. Turn on \"Respect Rules\" so DNS queries follow the rules through the proxy.",
+  "dns.enableRespectRules": "Turn on Respect Rules",
+  "mihomo.gist.unencryptedWarning": "Gist sync uploads the full runtime config, including node addresses and passwords. A GitHub secret gist is only unlisted: anyone with the link can read it. Turning on age encryption is recommended.",
+  "substore.allowLanWarning": "The Sub-Store API has no authentication. Once it is open to the LAN, any device on the same network can read and change all your subscriptions, including node passwords. Only enable this on a trusted network."
 }

@@ -1,4 +1,4 @@
-import { Notification } from 'electron'
+import { dialog, Notification } from 'electron'
 import i18next from 'i18next'
 import { DEEP_LINK_SCHEMES } from '../shared/appConfig'
 import { addProfileItem } from './config'
@@ -13,6 +13,38 @@ export function findDeepLink(args: string[]): string | undefined {
   })
 }
 
+// 深链可以由任何网页触发：导入订阅、安装插件前先让用户看清地址并确认
+async function confirmDeepLink(
+  kind: 'config' | 'plugin',
+  target: string,
+  name?: string | null
+): Promise<boolean> {
+  const detail = [
+    name ? `${i18next.t('deepLink.name')}: ${name}` : '',
+    `${i18next.t('deepLink.address')}: ${target}`
+  ]
+    .filter(Boolean)
+    .join('\n')
+  const options: Electron.MessageBoxOptions = {
+    type: 'question',
+    title: 'Clash Caesar',
+    message: i18next.t(kind === 'config' ? 'deepLink.confirmImport' : 'deepLink.confirmPlugin'),
+    detail: `${detail}\n\n${i18next.t('deepLink.trustHint')}`,
+    buttons: [
+      i18next.t(kind === 'config' ? 'deepLink.import' : 'deepLink.install'),
+      i18next.t('common.cancel')
+    ],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  }
+  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
+  const { response } = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options)
+  return response === 0
+}
+
 export async function handleDeepLink(url: string): Promise<void> {
   if (!findDeepLink([url])) return
 
@@ -25,6 +57,7 @@ export async function handleDeepLink(url: string): Promise<void> {
         if (!profileUrl) {
           throw new Error(i18next.t('profiles.error.urlParamMissing'))
         }
+        if (!(await confirmDeepLink('config', profileUrl, profileName))) break
         await addProfileItem({
           type: 'remote',
           name: profileName ?? undefined,
@@ -44,6 +77,7 @@ export async function handleDeepLink(url: string): Promise<void> {
         if (!pluginUrl) {
           throw new Error(i18next.t('profiles.error.urlParamMissing'))
         }
+        if (!(await confirmDeepLink('plugin', pluginUrl))) break
         plugin = await installRemotePlugin(pluginUrl)
         new Notification({ title: i18next.t('plugins.installed') }).show()
       } catch (e) {

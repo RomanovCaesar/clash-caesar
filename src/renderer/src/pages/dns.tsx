@@ -7,6 +7,7 @@ import SettingItem from '@renderer/components/base/base-setting-item'
 import { useControledMihomoConfig } from '@renderer/hooks/use-controled-mihomo-config'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { mihomoHotReloadConfig } from '@renderer/utils/ipc'
+import { needsRespectRulesHint } from '@renderer/utils/dns-hint'
 import React, { Key, ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -306,6 +307,19 @@ const DNS: React.FC = () => {
             }}
           />
         </SettingItem>
+        {needsRespectRulesHint(values.nameserver ?? [], values.respectRules ?? false) && (
+          <div className="mb-2 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-700 dark:text-warning">
+            <span className="flex-1">{t('dns.overseasHint')}</span>
+            <Button
+              size="sm"
+              color="warning"
+              variant="flat"
+              onPress={() => setValues({ ...values, respectRules: true })}
+            >
+              {t('dns.enableRespectRules')}
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-col items-stretch">
           <h3>{t('dns.defaultNameserver')} (default-nameserver)</h3>

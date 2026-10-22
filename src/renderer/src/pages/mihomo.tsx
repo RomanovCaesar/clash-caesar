@@ -86,6 +86,22 @@ const WEBUI_PANEL_OPTIONS: WebUIPanelOption[] = [
 
 const DEFAULT_WEBUI_PANEL_URL = WEBUI_PANEL_OPTIONS[0].url
 
+// 外部控制器的密钥：用安全随机数，24 位
+function generateSecret(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(24))
+  // 256 不是 62 的整数倍，丢弃会引入偏差的取值
+  const out: string[] = []
+  let pool = bytes
+  while (out.length < 24) {
+    for (const b of pool) {
+      if (b < 248 && out.length < 24) out.push(chars[b % 62])
+    }
+    pool = crypto.getRandomValues(new Uint8Array(24))
+  }
+  return out.join('')
+}
+
 const Mihomo: React.FC = () => {
   const { t } = useTranslation()
   const { appConfig, patchAppConfig, mutateAppConfig } = useAppConfig()
@@ -755,8 +771,13 @@ const Mihomo: React.FC = () => {
                   className="mr-2"
                   isDisabled={!!externalControllerError}
                   onPress={() => {
+                    // 开启外部控制器却没有密钥时自动生成一个：mihomo 默认允许任意网页跨域访问控制接口
+                    const needsSecret = externalControllerInput !== '' && !secret && !secretInput
+                    const generated = needsSecret ? generateSecret() : undefined
+                    if (generated) setSecretInput(generated)
                     onChangeNeedRestart({
-                      'external-controller': externalControllerInput
+                      'external-controller': externalControllerInput,
+                      ...(generated ? { secret: generated } : {})
                     })
                   }}
                 >
@@ -795,14 +816,7 @@ const Mihomo: React.FC = () => {
                 isIconOnly
                 title={t('common.generateSecret')}
                 variant="light"
-                onPress={() => {
-                  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-                  const randomSecret = Array.from(
-                    { length: 8 },
-                    () => chars[Math.floor(Math.random() * chars.length)]
-                  ).join('')
-                  setSecretInput(randomSecret)
-                }}
+                onPress={() => setSecretInput(generateSecret())}
               >
                 <IoMdRefresh className="text-lg" />
               </Button>

@@ -26,6 +26,7 @@ import {
 } from '../utils/dirs'
 import { createLogger } from '../utils/logger'
 import { atomicWriteFile } from '../utils/safeFile'
+import { isSafeExternalUrl } from '../utils/navigation'
 import { getAppConfig } from './app'
 import { getControledMihomoConfig } from './controledMihomo'
 import { getPluginItem, pluginSchedule } from './plugin'
@@ -594,7 +595,8 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
     if (headers['content-disposition'] && newItem.name === 'Remote File') {
       newItem.name = parseFilename(headers['content-disposition'])
     }
-    if (headers['profile-web-page-url']) {
+    // 「官网」由订阅服务器提供，只接受 http / https，其它协议点开可能直接执行程序
+    if (isSafeExternalUrl(headers['profile-web-page-url'])) {
       newItem.home = headers['profile-web-page-url']
     }
     if (headers['profile-update-interval'] && !item.allowFixedInterval) {

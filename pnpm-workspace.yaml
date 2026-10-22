@@ -15,3 +15,6 @@ patchedDependencies:
   vite-plugin-monaco-editor@1.1.0: patches/vite-plugin-monaco-editor@1.1.0.patch
 minimumReleaseAgeExclude:
   - electron@45.0.0
+overrides:
+  # GHSA-q3jh-wrc6-jgq8 / GHSA-8r9p-f939-6h3c：跨站重定向时可能带上订阅的 Authorization
+  follow-redirects: '>=1.16.1'

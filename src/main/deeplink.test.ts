@@ -5,8 +5,10 @@ const addProfileItem = vi.fn()
 const installRemotePlugin = vi.fn()
 const loginPlugin = vi.fn()
 const safeShowErrorBox = vi.fn()
+const showMessageBox = vi.fn()
 
 vi.mock('electron', () => ({
+  dialog: { showMessageBox: (...args: unknown[]) => showMessageBox(...args) },
   Notification: class {
     show(): void {
       notificationShow()
@@ -32,6 +34,8 @@ beforeEach(() => {
   installRemotePlugin.mockReset().mockResolvedValue({ id: 'plugin-id' })
   loginPlugin.mockReset().mockResolvedValue(undefined)
   safeShowErrorBox.mockReset()
+  // 默认用户在确认框里点了「导入 / 安装」
+  showMessageBox.mockReset().mockResolvedValue({ response: 0 })
 })
 
 describe('findDeepLink', () => {
@@ -102,5 +106,31 @@ describe('install-plugin deep link', () => {
       'plugins.installFailed',
       expect.stringContaining('profiles.error.urlParamMissing')
     )
+  })
+})
+
+describe('deep link confirmation', () => {
+  it('shows the subscription address before importing', async () => {
+    const sub = 'https://panel.example/sub/abc'
+    await handleDeepLink(`clash-caesar://install-config?url=${encodeURIComponent(sub)}&name=Home`)
+    const [options] = showMessageBox.mock.calls[0] as [{ detail: string }]
+    expect(options.detail).toContain(sub)
+    expect(options.detail).toContain('Home')
+    expect(addProfileItem).toHaveBeenCalled()
+  })
+
+  it('does nothing when the import is cancelled', async () => {
+    showMessageBox.mockResolvedValue({ response: 1 })
+    await handleDeepLink('clash-caesar://install-config?url=https%3A%2F%2Fevil.example%2Fsub')
+    expect(addProfileItem).not.toHaveBeenCalled()
+    expect(notificationShow).not.toHaveBeenCalled()
+    expect(safeShowErrorBox).not.toHaveBeenCalled()
+  })
+
+  it('neither installs nor logs in when the plugin is cancelled', async () => {
+    showMessageBox.mockResolvedValue({ response: 1 })
+    await handleDeepLink('clash://install-plugin?url=https%3A%2F%2Fevil.example%2Fapp.cpx')
+    expect(installRemotePlugin).not.toHaveBeenCalled()
+    expect(loginPlugin).not.toHaveBeenCalled()
   })
 })

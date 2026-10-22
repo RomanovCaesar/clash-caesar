@@ -258,6 +258,12 @@ const MihomoConfig: React.FC = () => {
           }}
         />
       </SettingItem>
+      {/* 同步的是含节点凭据的运行配置；secret gist 只是不公开列出，拿到链接的人都能看 */}
+      {githubToken && !gistAgeEncrypt && (
+        <p className="mb-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-700 dark:text-warning">
+          {t('mihomo.gist.unencryptedWarning')}
+        </p>
+      )}
       <SettingItem title={t('mihomo.gist.ageRecipient')} divider>
         <Input
           size="sm"

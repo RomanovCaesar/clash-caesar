@@ -83,6 +83,12 @@ const SubStoreConfig: React.FC = () => {
               }}
             />
           </SettingItem>
+          {/* Sub-Store 的接口没有身份验证，对局域网开放后同一网络里的设备都能读到全部订阅 */}
+          {subStoreHost === '0.0.0.0' && (
+            <p className="mb-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-700 dark:text-warning">
+              {t('substore.allowLanWarning')}
+            </p>
+          )}
           <SettingItem title={t('substore.useCustomBackend')} divider>
             <Switch
               size="sm"

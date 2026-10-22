@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { readFileSync } from 'fs'
-import { BrowserWindow, Menu, screen, shell, type IpcMainEvent } from 'electron'
+import { BrowserWindow, Menu, screen, type IpcMainEvent } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getAppConfig } from './config'
@@ -8,6 +8,7 @@ import { quitWithoutCore } from './core/manager'
 import { hideDockIcon, showDockIcon } from './resolve/tray'
 import { dataDir } from './utils/dirs'
 import { mainWindowLogger } from './utils/logger'
+import { lockNavigation } from './utils/navigation'
 import { atomicWriteFileSync } from './utils/safeFile'
 
 interface WindowState {
@@ -334,10 +335,7 @@ function setupWindowEvents(window: BrowserWindow): void {
   window.on('maximize', () => updateWindowState(window, false))
   window.on('unmaximize', () => updateWindowState(window, false))
 
-  window.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+  lockNavigation(window.webContents)
 }
 
 function scheduleQuitWithoutCore(

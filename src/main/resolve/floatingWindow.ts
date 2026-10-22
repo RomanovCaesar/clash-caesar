@@ -5,6 +5,7 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import windowStateKeeper from 'electron-window-state'
 import { getAppConfig, patchAppConfig } from '../config'
 import { floatingWindowLogger } from '../utils/logger'
+import { lockNavigation } from '../utils/navigation'
 import { buildContextMenu, showTrayIcon } from './tray'
 
 export let floatingWindow: BrowserWindow | null = null
@@ -93,6 +94,7 @@ async function createFloatingWindow(): Promise<void> {
     const win = new BrowserWindow(windowOptions)
     floatingWindow = win
     floatingWindowState.manage(floatingWindow)
+    lockNavigation(win.webContents)
 
     // 事件监听器
     floatingWindow.webContents.on('render-process-gone', (_, details) => {

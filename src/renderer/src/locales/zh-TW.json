@@ -920,5 +920,16 @@
   "muiNetwork.error.unreachable": "聯機網路裡的面板都連不上，請檢查網路",
   "muiNetwork.error.not_found": "該面板上沒有這個 Username 的可用節點",
   "muiNetwork.error.bad_response": "面板回傳的資料無效或簽章驗證失敗",
-  "muiNetwork.error.unavailable": "系統安全儲存不可用，無法儲存裝置金鑰"
+  "muiNetwork.error.unavailable": "系統安全儲存不可用，無法儲存裝置金鑰",
+  "deepLink.confirmImport": "要匯入這個訂閱嗎？",
+  "deepLink.confirmPlugin": "要安裝這個機場外掛嗎？",
+  "deepLink.name": "名稱",
+  "deepLink.address": "位址",
+  "deepLink.trustHint": "這個請求來自網頁或其他程式開啟的連結。只匯入你信任的來源，訂閱決定了你的流量經由哪裡轉發。",
+  "deepLink.import": "匯入",
+  "deepLink.install": "安裝",
+  "dns.overseasHint": "上游 DNS 全是境外公共 DNS，且沒有開啟「遵守規則」：這些查詢會直連出去，在中國大陸通常會被干擾，導致被牆網域解析失敗，經代理的 UDP（STUN、WebRTC、QUIC、遊戲）也會失效。建議開啟「遵守規則」，讓 DNS 查詢依規則走代理。",
+  "dns.enableRespectRules": "開啟遵守規則",
+  "mihomo.gist.unencryptedWarning": "Gist 同步上傳的是包含節點位址和密碼的完整執行設定。GitHub 的 secret gist 只是不公開列出，任何拿到連結的人都能看到。建議開啟 age 加密。",
+  "substore.allowLanWarning": "Sub-Store 的介面沒有身分驗證。對區域網路開放後，同一網路中的任何裝置都能讀取和修改你的全部訂閱（包含節點密碼）。只在可信任的網路中開啟。"
 }
