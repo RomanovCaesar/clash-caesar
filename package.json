@@ -1,6 +1,6 @@
 {
   "name": "clash-caesar",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Clash Caesar",
   "type": "module",
   "main": "./out/main/index.js",
@@ -86,7 +86,7 @@
     "cron-validator": "^1.4.0",
     "dayjs": "^1.11.23",
     "driver.js": "^1.8.0",
-    "electron": "^45.0.0",
+    "electron": "^45.2.1",
     "electron-builder": "26.15.7",
     "electron-vite": "4.0.1",
     "electron-window-state": "^5.0.3",
